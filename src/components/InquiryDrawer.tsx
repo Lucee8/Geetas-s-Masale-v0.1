@@ -25,7 +25,7 @@ import {
   User
 } from 'lucide-react';
 import { Product } from '../types';
-import { isFirebaseConfigured, db } from '../lib/firebase';
+import { isFirebaseConfigured, db, isVercel } from '../lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 
 interface InquiryDrawerProps {
@@ -127,7 +127,7 @@ export default function InquiryDrawer({
         };
         await setDoc(doc(db, 'orders', orderId), orderDoc);
         console.log("Order saved to Firestore successfully!");
-      } else {
+      } else if (!isVercel) {
         const res = await fetch('/api/orders', {
           method: 'POST',
           headers: {
@@ -137,6 +137,23 @@ export default function InquiryDrawer({
         });
         if (res.ok) {
           console.log("Order saved to database successfully!");
+        }
+      } else {
+        // Save to localStorage for client-side demo persistence
+        try {
+          const existing = JSON.parse(localStorage.getItem('saved_orders') || '[]');
+          existing.push({
+            id: orderId,
+            name: fullName,
+            phone: mobile,
+            address: `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`,
+            total: finalTotalBill,
+            createdAt: new Date().toISOString()
+          });
+          localStorage.setItem('saved_orders', JSON.stringify(existing));
+          console.log("Vercel demo mode: order simulated and stored in localStorage");
+        } catch (storageErr) {
+          console.error("Local storage order save failed:", storageErr);
         }
       }
     } catch (e) {

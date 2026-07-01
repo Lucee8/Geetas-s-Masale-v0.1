@@ -6,6 +6,7 @@
 import React from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { Anchor, Compass, Heart } from 'lucide-react';
+import konkanCoastImage from '../assets/images/konkan_coast_1780594634904.png';
 
 export default function Heritage() {
   const containerRef = React.useRef(null);
@@ -29,7 +30,7 @@ export default function Heritage() {
         className="absolute inset-x-0 -top-40 -bottom-40 z-0 opacity-40"
       >
         <img
-          src="/src/assets/images/konkan_coast_1780594634904.png"
+          src={konkanCoastImage}
           alt="Malvan Coastline Heritage view"
           className="w-full h-full object-cover filter saturate-[1.1] contrast-[1.05]"
           referrerPolicy="no-referrer"

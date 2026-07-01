@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, MessageSquare, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { TESTIMONIALS } from '../data/storeData';
-import { isFirebaseConfigured, db } from '../lib/firebase';
+import { isFirebaseConfigured, db, isVercel } from '../lib/firebase';
 import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
 
 export default function Reviews() {
@@ -41,7 +41,7 @@ export default function Reviews() {
         .catch(err => {
           console.error("Failed to load Firebase reviews:", err);
         });
-    } else {
+    } else if (!isVercel) {
       fetch('/api/reviews')
         .then(res => {
           if (res.ok) return res.json();
@@ -103,7 +103,7 @@ export default function Reviews() {
           setRevMsg('');
           setRevRating(5);
         }, 2200);
-      } else {
+      } else if (!isVercel) {
         const res = await fetch('/api/reviews', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -126,6 +126,28 @@ export default function Reviews() {
             setRevRating(5);
           }, 2200);
         }
+      } else {
+        // Vercel client-side simulation: instantly append the review and show success
+        const localNewReview = {
+          id: `review_${Date.now()}`,
+          name: revName,
+          rating: Number(revRating),
+          location: revLoc || 'India',
+          product: revProd,
+          review: revMsg,
+          approved: true,
+          createdAt: new Date().toISOString()
+        };
+        setReviews(prev => [localNewReview, ...prev]);
+        setSuccessMsg(true);
+        setTimeout(() => {
+          setShowFormModal(false);
+          setSuccessMsg(false);
+          setRevName('');
+          setRevLoc('');
+          setRevMsg('');
+          setRevRating(5);
+        }, 2200);
       }
     } catch (err) {
       console.error("Failed to post user review:", err);

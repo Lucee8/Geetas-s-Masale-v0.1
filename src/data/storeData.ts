@@ -10,6 +10,24 @@ import { Product, Recipe, Testimonial, GalleryItem } from '../types';
 const imageModules = import.meta.glob('../assets/images/**/*.{webp,webP,png,jpg,jpeg}', { eager: true, import: 'default' }) as Record<string, string>;
 
 /**
+ * Resolves static paths starting with /src/assets/images/ to their bundled hashed path.
+ */
+export const resolveAssetImage = (path: string): string => {
+  if (!path) return '';
+  if (!path.startsWith('/src/assets/images/')) return path;
+  
+  const filename = path.split('/').pop();
+  if (!filename) return path;
+  
+  for (const [key, val] of Object.entries(imageModules)) {
+    if (key.endsWith(filename)) {
+      return val;
+    }
+  }
+  return path;
+};
+
+/**
  * Robust, dynamic helper function to automatically resolve product image URLs
  * based on category and product name, supporting various file formats and naming patterns.
  */
@@ -747,7 +765,7 @@ export const PRODUCTS: Product[] = [
   }
 ];
 
-export const RECIPES: Recipe[] = [
+const RAW_RECIPES: Recipe[] = [
   {
     id: 'r1',
     title: 'Authentic Crispy Malvani Fish Fry',
@@ -875,7 +893,7 @@ export const TESTIMONIALS: Testimonial[] = [
   }
 ];
 
-export const GALLERY_PHOTOS: GalleryItem[] = [
+const RAW_GALLERY_PHOTOS: GalleryItem[] = [
   {
     id: 'g1',
     title: 'Geeta’s Masale Kasal Storefront',
@@ -913,3 +931,13 @@ export const GALLERY_PHOTOS: GalleryItem[] = [
     image: '/src/assets/images/malvani_cooking_1780594653286.png'
   }
 ];
+
+export const RECIPES: Recipe[] = RAW_RECIPES.map(r => ({
+  ...r,
+  image: resolveAssetImage(r.image)
+}));
+
+export const GALLERY_PHOTOS: GalleryItem[] = RAW_GALLERY_PHOTOS.map(p => ({
+  ...p,
+  image: resolveAssetImage(p.image)
+}));

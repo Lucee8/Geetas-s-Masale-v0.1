@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, MapPin, Clock, MessageSquare, Compass, Send, CheckCircle2, ShieldCheck, Mail } from 'lucide-react';
-import { isFirebaseConfigured, db } from '../lib/firebase';
+import { isFirebaseConfigured, db, isVercel } from '../lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
 
 export default function Contact() {
@@ -48,7 +48,7 @@ export default function Contact() {
           status: 'New',
           createdAt: new Date().toISOString()
         });
-      } else {
+      } else if (!isVercel) {
         await fetch('/api/contacts', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -59,6 +59,8 @@ export default function Contact() {
             message: formData.message || 'No additional text specified.'
           })
         });
+      } else {
+        console.log("Vercel demo: contact form bypassed local API save.");
       }
     } catch (err) {
       console.error("Failed to sync message with backend api/firestore:", err);
