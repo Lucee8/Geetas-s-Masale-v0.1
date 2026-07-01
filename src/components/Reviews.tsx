@@ -7,6 +7,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, MessageSquare, ChevronLeft, ChevronRight, User } from 'lucide-react';
 import { TESTIMONIALS } from '../data/storeData';
+import { isFirebaseConfigured, db } from '../lib/firebase';
+import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
 
 export default function Reviews() {
   const [reviews, setReviews] = useState<any[]>(TESTIMONIALS);
@@ -24,19 +26,36 @@ export default function Reviews() {
 
   // Load reviews from API with fallback to static testimonials
   useEffect(() => {
-    fetch('/api/reviews')
-      .then(res => {
-        if (res.ok) return res.json();
-        throw new Error('API failed');
-      })
-      .then(data => {
-        if (data && data.length > 0) {
-          setReviews(data);
-        }
-      })
-      .catch(err => {
-        console.log("Using static mock testimonials fallback:", err);
-      });
+    if (isFirebaseConfigured && db) {
+      getDocs(collection(db, 'reviews'))
+        .then(snap => {
+          const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          // Filter to only approved reviews on client-side or use all if empty
+          const approved = docs.filter((r: any) => r.approved !== false);
+          if (approved.length > 0) {
+            setReviews(approved);
+          } else if (docs.length > 0) {
+            setReviews(docs);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to load Firebase reviews:", err);
+        });
+    } else {
+      fetch('/api/reviews')
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('API failed');
+        })
+        .then(data => {
+          if (data && data.length > 0) {
+            setReviews(data);
+          }
+        })
+        .catch(err => {
+          console.log("Using static mock testimonials fallback:", err);
+        });
+    }
   }, []);
 
   // Auto-scroll effect every 5.5 seconds
@@ -63,18 +82,18 @@ export default function Reviews() {
     if (!revName.trim() || !revMsg.trim()) return;
     setSubmitting(true);
     try {
-      const res = await fetch('/api/reviews', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (isFirebaseConfigured && db) {
+        const reviewId = `review_${Date.now()}`;
+        await setDoc(doc(db, 'reviews', reviewId), {
+          id: reviewId,
           name: revName,
           rating: Number(revRating),
           location: revLoc || 'India',
           product: revProd,
-          review: revMsg
-        })
-      });
-      if (res.ok) {
+          review: revMsg,
+          approved: false, // Default to unapproved until moderator approves it
+          createdAt: new Date().toISOString()
+        });
         setSuccessMsg(true);
         setTimeout(() => {
           setShowFormModal(false);
@@ -84,6 +103,29 @@ export default function Reviews() {
           setRevMsg('');
           setRevRating(5);
         }, 2200);
+      } else {
+        const res = await fetch('/api/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: revName,
+            rating: Number(revRating),
+            location: revLoc || 'India',
+            product: revProd,
+            review: revMsg
+          })
+        });
+        if (res.ok) {
+          setSuccessMsg(true);
+          setTimeout(() => {
+            setShowFormModal(false);
+            setSuccessMsg(false);
+            setRevName('');
+            setRevLoc('');
+            setRevMsg('');
+            setRevRating(5);
+          }, 2200);
+        }
       }
     } catch (err) {
       console.error("Failed to post user review:", err);

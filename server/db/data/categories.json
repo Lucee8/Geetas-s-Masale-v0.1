@@ -1,0 +1,42 @@
+[
+  {
+    "id": "Masale",
+    "name": "Malvani Masalas & Chutneys",
+    "description": "Generations of expertise in roasting and blending coastal spices, red chillies, and garlic.",
+    "image": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80",
+    "count": 11,
+    "hidden": false
+  },
+  {
+    "id": "Pith",
+    "name": "Traditional Flours (Pith)",
+    "description": "Freshly milled rice, pulse, and grain flours prepared for authentic Bhakri, Vade, and Modak.",
+    "image": "https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=600&auto=format&fit=crop&q=80",
+    "count": 7,
+    "hidden": false
+  },
+  {
+    "id": "Malvani products",
+    "name": "Konkan Specialties & Meva",
+    "description": "Sun-dried Kokum, parboiled rice, fruit leathers (Poli), and authentic farm-fresh items.",
+    "image": "https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=600&auto=format&fit=crop&q=80",
+    "count": 11,
+    "hidden": false
+  },
+  {
+    "id": "Laddoos",
+    "name": "Handmade Laddoos",
+    "description": "Sweet, nutritious daily delicacies rolled with pure ghee, organic jaggery, peanuts, and dry fruits.",
+    "image": "https://images.unsplash.com/photo-1581781868311-6415779c13dd?w=600&auto=format&fit=crop&q=80",
+    "count": 4,
+    "hidden": false
+  },
+  {
+    "id": "Kaju",
+    "name": "Premium Malvan Cashews (Kaju)",
+    "description": "Export-grade whole cashews, salted variants, masala-flavored crunch, and healthy split kernels.",
+    "image": "/src/assets/images/cashew_premium_1780594672474.png",
+    "count": 7,
+    "hidden": false
+  }
+]

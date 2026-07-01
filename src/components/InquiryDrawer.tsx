@@ -25,6 +25,8 @@ import {
   User
 } from 'lucide-react';
 import { Product } from '../types';
+import { isFirebaseConfigured, db } from '../lib/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
 
 interface InquiryDrawerProps {
   isOpen: boolean;
@@ -108,15 +110,34 @@ export default function InquiryDrawer({
         paidAmount: paidAmt
       };
 
-      const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        console.log("Order saved to database successfully!");
+      if (isFirebaseConfigured && db) {
+        const orderId = `order_${Date.now()}`;
+        const orderDoc = {
+          id: orderId,
+          name: fullName,
+          phone: mobile,
+          email: '',
+          address: `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`,
+          items: itemsPayload,
+          paymentMethod: method,
+          total: finalTotalBill,
+          paidAmount: paidAmt,
+          status: 'Pending',
+          createdAt: new Date().toISOString()
+        };
+        await setDoc(doc(db, 'orders', orderId), orderDoc);
+        console.log("Order saved to Firestore successfully!");
+      } else {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          console.log("Order saved to database successfully!");
+        }
       }
     } catch (e) {
       console.error("Failed to post order to backend:", e);

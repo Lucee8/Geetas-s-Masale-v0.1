@@ -20,6 +20,8 @@ import InquiryDrawer from './components/InquiryDrawer';
 import AdminDashboard from './components/AdminDashboard';
 import { Product } from './types';
 import { PRODUCTS, CATEGORIES } from './data/storeData';
+import { isFirebaseConfigured, db, seedDatabaseIfEmpty } from './lib/firebase';
+import { collection, getDocs } from 'firebase/firestore';
 
 export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +71,37 @@ export default function App() {
 
   const fetchStoreData = async () => {
     try {
+      if (isFirebaseConfigured && db) {
+        try {
+          // Auto seed if database collections are empty
+          await seedDatabaseIfEmpty();
+
+          // Fetch from Firestore
+          const prodSnap = await getDocs(collection(db, 'products'));
+          const catSnap = await getDocs(collection(db, 'categories'));
+
+          const products = prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Product[];
+          const categories = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+          if (products.length > 0) {
+            setProductsList(products);
+          } else {
+            setProductsList(PRODUCTS);
+          }
+
+          if (categories.length > 0) {
+            setCategoriesList(categories);
+          } else {
+            setCategoriesList(CATEGORIES);
+          }
+
+          setLoading(false);
+          return;
+        } catch (firebaseErr) {
+          console.error("Firebase fetch failed, falling back to local/API:", firebaseErr);
+        }
+      }
+
       const [prodRes, catRes] = await Promise.all([
         fetch('/api/products').catch(() => null),
         fetch('/api/categories').catch(() => null)

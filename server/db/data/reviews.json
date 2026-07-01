@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "Prasad Gawde",
+    "ratingValue": 5,
+    "comment": "Pure organic Sankeshwari and Ghati chilli mix. True taste of Malvan kitchen. The Sunday masala is out of this world!",
+    "date": "2026-06-15",
+    "verified": true,
+    "approved": true
+  },
+  {
+    "id": 2,
+    "name": "Aparna Parab",
+    "ratingValue": 5,
+    "comment": "The Peanuts Chutney and Khobra Lasun Chutney are delicious with bhakri. Strongly suggest this to everyone who loves home-style Konkan cooking.",
+    "date": "2026-06-14",
+    "verified": true,
+    "approved": true
+  }
+]

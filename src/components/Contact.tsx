@@ -6,6 +6,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Phone, MapPin, Clock, MessageSquare, Compass, Send, CheckCircle2, ShieldCheck, Mail } from 'lucide-react';
+import { isFirebaseConfigured, db } from '../lib/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -35,18 +37,31 @@ export default function Contact() {
 
     // Save contact message to MongoDB/SQL database for admin dashboard
     try {
-      await fetch('/api/contacts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      if (isFirebaseConfigured && db) {
+        const contactId = `contact_${Date.now()}`;
+        await setDoc(doc(db, 'contacts', contactId), {
+          id: contactId,
           name: formData.name,
           phone: formData.phone,
           product: formData.selectedProduct,
-          message: formData.message || 'No additional text specified.'
-        })
-      });
+          message: formData.message || 'No additional text specified.',
+          status: 'New',
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        await fetch('/api/contacts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: formData.name,
+            phone: formData.phone,
+            product: formData.selectedProduct,
+            message: formData.message || 'No additional text specified.'
+          })
+        });
+      }
     } catch (err) {
-      console.error("Failed to sync message with backend api:", err);
+      console.error("Failed to sync message with backend api/firestore:", err);
     }
 
     // Compose custom text template for instant notification
