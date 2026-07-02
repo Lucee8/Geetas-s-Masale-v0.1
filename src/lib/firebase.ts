@@ -47,10 +47,7 @@ export const isFirebaseConfigured = !!(
   firebaseConfig.projectId
 );
 
-export const isVercel = typeof window !== 'undefined' && (
-  window.location.hostname.includes('vercel.app') || 
-  window.location.hostname.includes('localhost') === false && window.location.hostname.includes('run.app') === false
-);
+export const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
 
 let app;
 export let auth: any = null;
@@ -123,7 +120,21 @@ export async function seedDatabaseIfEmpty() {
         await setDoc(doc(db, 'coupons', coupon.id), coupon);
       }
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("Error while auto-seeding Firestore database:", err);
+    if (err?.message?.includes('permission') || err?.code === 'permission-denied') {
+      console.warn(
+        "💡 DIAGNOSTIC: This is a Firebase Firestore permission issue. " +
+        "Please open your Firebase Console -> Firestore Database -> Rules, paste the following rules, and click 'Publish':\n\n" +
+        "rules_version = '2';\n" +
+        "service cloud.firestore {\n" +
+        "  match /databases/{database}/documents {\n" +
+        "    match /{document=**} {\n" +
+        "      allow read, write: if true;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}"
+      );
+    }
   }
 }
