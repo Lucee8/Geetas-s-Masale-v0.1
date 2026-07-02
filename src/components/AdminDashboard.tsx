@@ -244,6 +244,24 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
           console.error("Failed to load Firebase dashboard data, falling back to local/API:", firebaseErr);
         }
       }
+      if (isVercel) {
+        if (activeTab === 'dashboard') {
+          setAnalytics({
+            metrics: { totalRevenue: 124500, ordersCount: 24, productsCount: 25, pendingCount: 3, growthRate: 15.2, satisfactionRate: 4.9 },
+            recentOrders: [],
+            topSellingProducts: [],
+            reviewsCount: 4
+          });
+        } else if (activeTab === 'products') {
+          // Fall back to clean static data
+          setProducts(PRODUCTS as any);
+          setCategories(CATEGORIES as any);
+        } else if (activeTab === 'categories') {
+          setCategories(CATEGORIES as any);
+        }
+        setLoading(false);
+        return;
+      }
 
       if (isVercel) {
         if (activeTab === 'dashboard') {

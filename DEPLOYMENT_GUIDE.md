@@ -1,6 +1,6 @@
-# 🚀 Complete Beginner's Guide: GitHub, Firebase, Vercel & URL Routing
+# 🚀 Complete Beginner's Guide: GitHub, Firebase, Vercel, Render & URL Routing
 
-Welcome! This step-by-step guide is written specifically for **absolute beginners**. By following this, you will understand exactly how your website works, how to connect it to **Firebase**, how to upload it to **GitHub**, how to host it live on **Vercel**, and how to separate your customer-facing website and admin dashboard with different links!
+Welcome! This step-by-step guide is written specifically for **absolute beginners**. By following this, you will understand exactly how your website works, how to connect it to **Firebase**, how to upload it to **GitHub**, how to host it live on **Vercel** or **Render**, and how to separate your customer-facing website and admin dashboard with different links!
 
 ---
 
@@ -10,7 +10,8 @@ Welcome! This step-by-step guide is written specifically for **absolute beginner
 3. [🔥 Step-by-Step: Setting up Firebase for Real Data Persistence](#3-step-by-step-setting-up-firebase-for-real-data-persistence)
 4. [🐙 Step-by-Step: Uploading Your Code to GitHub](#4-step-by-step-uploading-your-code-to-github)
 5. [🌐 Step-by-Step: Deploying Your Site Live on Vercel](#5-step-by-step-deploying-your-site-live-on-vercel)
-6. [🔑 Your Admin Credentials & Password](#6-your-admin-credentials-&-password)
+6. [☁️ Step-by-Step: Deploying Your Server Live on Render (RECOMMENDED FOR FULL-STACK)](#6-step-by-step-deploying-your-server-live-on-render-recommended-for-full-stack)
+7. [🔑 Your Admin Credentials & Password](#7-your-admin-credentials-&-password)
 
 ---
 
@@ -20,9 +21,8 @@ Right now, your local workspace uses a **Node.js Express server (`server.ts`)** 
 
 * **Why Vercel crashed with `404 (Not Found)`**: Vercel is a **static web hosting platform**. It serves the compiled React frontend, but it **does not run the Node/Express server (`server.ts`)** or support local `.json` databases in the cloud. When your React app sent requests to `/api/...`, Vercel couldn't find those backend routes and returned an HTML error page, which caused the code to crash with `Unexpected token 'T' / "The page could not be found"`.
 * **The Solution**: 
-  1. We configured a client-side routing system inside your app so you can navigate cleanly.
-  2. We added a `vercel.json` file to tell Vercel to route all links to your main page correctly.
-  3. By connecting to **Firebase Firestore** (a cloud-hosted database), your React app can read and write data directly from the frontend to the database safely, without needing an intermediate local Express backend!
+  1. **Firebase Solution**: Connect your React app to **Firebase Firestore** (a cloud-hosted database). Your React app can then read and write data directly from the frontend to the database safely, without needing an intermediate Express backend!
+  2. **Render Solution**: Use **Render.com** (a free cloud platform that runs backend Node/Express servers). Render will run your backend Express server AND serve your React frontend at the exact same URL, solving all 404 console errors natively!
 
 ---
 
@@ -123,7 +123,26 @@ Vercel is lightning fast, 100% free, and scales perfectly for frontend React app
 
 ---
 
-## 🔑 6. Your Admin Credentials & Password
+## ☁️ 6. Step-by-Step: Deploying Your Server Live on Render (RECOMMENDED FOR FULL-STACK)
+
+Render is completely free and supports running full-stack Node.js servers, making it perfect for your Node/Express server (`server.ts`) and React frontend to communicate without any 404 errors!
+
+For the detailed, step-by-step, beginner-friendly instructions, please read our new guide:
+👉 **[RENDER_DEPLOYMENT.md](./RENDER_DEPLOYMENT.md)**
+
+### Quick Summary of Render Settings:
+* **Service Type**: Web Service
+* **Repository**: Connect your `geetas-masale-store` from GitHub
+* **Environment/Runtime**: `Node`
+* **Region**: `Singapore` (Recommended for fast speeds in Asia/India)
+* **Build Command**: `npm install && npm run build`
+* **Start Command**: `npm start`
+* **Instance Type**: **Free** ($0/month)
+* **Environment Variables** (in Advanced): `NODE_ENV` = `production`
+
+---
+
+## 🔑 7. Your Admin Credentials & Password
 
 By default, the admin credentials to manage products, categories, orders, and inquiries are:
 

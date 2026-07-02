@@ -5,6 +5,7 @@
 
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import apiRouter from './server/api';
 
@@ -40,9 +41,32 @@ async function startServer() {
     console.log('Serving production-built static assets...');
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    // Support SPA router fallback
+    // Support SPA router fallback and inject server-side env variables
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      const indexPath = path.join(distPath, 'index.html');
+      try {
+        let html = fs.readFileSync(indexPath, 'utf8');
+        
+        // Find configuration from process.env (supports both exact lowercase names and standard uppercase ones)
+        const fbConfig = {
+          apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.apiKey || '',
+          authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.authDomain || '',
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.projectId || '',
+          storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.storageBucket || '',
+          messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.messagingSenderId || '',
+          appId: process.env.VITE_FIREBASE_APP_ID || process.env.appId || '',
+          measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || process.env.measurementId || ''
+        };
+        
+        if (fbConfig.apiKey && fbConfig.projectId) {
+          const injectScript = `<script>window.__FIREBASE_CONFIG__ = ${JSON.stringify(fbConfig)};</script>`;
+          html = html.replace('<head>', `<head>${injectScript}`);
+        }
+        
+        res.send(html);
+      } catch (err) {
+        res.sendFile(indexPath);
+      }
     });
   }
 

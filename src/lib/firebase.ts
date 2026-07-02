@@ -24,14 +24,22 @@ import {
 } from 'firebase/firestore';
 import { PRODUCTS, CATEGORIES } from '../data/storeData';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
+const getFirebaseConfig = () => {
+  // Check if Express backend injected the configuration globally
+  if (typeof window !== 'undefined' && (window as any).__FIREBASE_CONFIG__) {
+    return (window as any).__FIREBASE_CONFIG__;
+  }
+  return {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID
+  };
 };
+
+const firebaseConfig = getFirebaseConfig();
 
 // Check if Firebase configuration has been provided via environment variables
 export const isFirebaseConfigured = !!(
