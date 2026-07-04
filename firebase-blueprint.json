@@ -1,0 +1,175 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile and Customer Data",
+      "description": "Information about registered customer accounts",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Unique user ID from Firebase Auth"
+        },
+        "name": {
+          "type": "string",
+          "description": "Customer full name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Customer email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Customer mobile phone number"
+        },
+        "rewardPoints": {
+          "type": "integer",
+          "description": "Loyalty or reward points earned"
+        },
+        "cart": {
+          "type": "array",
+          "description": "Synchronized shopping cart item list with quantity and product details"
+        },
+        "wishlist": {
+          "type": "array",
+          "description": "Wishlisted product IDs"
+        },
+        "addresses": {
+          "type": "array",
+          "description": "List of saved delivery addresses"
+        },
+        "recentlyViewed": {
+          "type": "array",
+          "description": "IDs of recently viewed products"
+        },
+        "couponsUsed": {
+          "type": "array",
+          "description": "List of coupon codes already redeemed"
+        },
+        "preferences": {
+          "type": "object",
+          "description": "Customer notification and application settings"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Document creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Document last modification timestamp"
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "Order": {
+      "title": "Customer Order",
+      "description": "Details of an order placed by a customer",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Order unique ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the customer who placed the order"
+        },
+        "items": {
+          "type": "array",
+          "description": "List of ordered products and quantities"
+        },
+        "subtotal": {
+          "type": "number",
+          "description": "Items subtotal cost"
+        },
+        "deliveryCharge": {
+          "type": "number",
+          "description": "Delivery fees"
+        },
+        "discount": {
+          "type": "number",
+          "description": "Discount applied using coupon"
+        },
+        "total": {
+          "type": "number",
+          "description": "Final total order amount"
+        },
+        "couponCode": {
+          "type": "string",
+          "description": "Coupon code used"
+        },
+        "shippingAddress": {
+          "type": "object",
+          "description": "Selected shipping address"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+          "description": "Current fulfillment status of the order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the order was placed"
+        }
+      },
+      "required": ["id", "userId", "items", "total", "shippingAddress", "status", "createdAt"]
+    },
+    "Review": {
+      "title": "Product Review",
+      "description": "Customer review and rating for a product",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Review unique ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the customer who wrote the review"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Name of the customer"
+        },
+        "productId": {
+          "type": "string",
+          "description": "ID of the product being reviewed"
+        },
+        "productName": {
+          "type": "string",
+          "description": "Name of the product"
+        },
+        "rating": {
+          "type": "integer",
+          "description": "Product rating (1 to 5)"
+        },
+        "reviewText": {
+          "type": "string",
+          "description": "Customer comments"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when review was written"
+        }
+      },
+      "required": ["id", "userId", "productId", "rating", "reviewText", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and synchronized app state"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Purchase transaction records"
+    },
+    "reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Customer product reviews and ratings"
+    }
+  }
+}

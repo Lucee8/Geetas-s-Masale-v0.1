@@ -27,6 +27,7 @@ import {
 import { Product } from '../types';
 import { isFirebaseConfigured, db, isVercel } from '../lib/firebase';
 import { collection, doc, setDoc } from 'firebase/firestore';
+import { useUser } from '../context/UserContext';
 
 interface InquiryDrawerProps {
   isOpen: boolean;
@@ -43,7 +44,7 @@ export default function InquiryDrawer({
   onRemoveItem,
   onUpdateQuantity,
 }: InquiryDrawerProps) {
-  
+  const { profile, placeOrder } = useUser();
   const [step, setStep] = useState<'bag' | 'address' | 'summary' | 'pay'>('bag');
   
   // Customer info states initialized from LocalStorage for seamless sessions
@@ -55,6 +56,25 @@ export default function InquiryDrawer({
   const [landmark, setLandmark] = useState(() => localStorage.getItem('gm_landmark') || '');
   const [cityStatePincode, setCityStatePincode] = useState(() => localStorage.getItem('gm_cityStatePincode') || '');
   const [mobile, setMobile] = useState(() => localStorage.getItem('gm_mobile') || '');
+  const [redeemPoints, setRedeemPoints] = useState(false);
+
+  // Auto-fill from profile default address on load
+  useEffect(() => {
+    if (profile) {
+      const defaultAddr = profile.addresses?.find(a => a.isDefault) || profile.addresses?.[0];
+      if (defaultAddr) {
+        setFullName(defaultAddr.fullName);
+        setMobile(defaultAddr.mobile);
+        setStreetAddress(defaultAddr.streetAddress);
+        setLandmark(defaultAddr.landmark || '');
+        setCityStatePincode(defaultAddr.cityStatePincode);
+        setAddressType(defaultAddr.type);
+      } else {
+        if (profile.name && !fullName) setFullName(profile.name);
+        if (profile.phone && !mobile) setMobile(profile.phone);
+      }
+    }
+  }, [profile]);
   
   const [addressErrors, setAddressErrors] = useState<string[]>([]);
   const [amountMode, setAmountMode] = useState<'full' | 'advance' | 'custom'>('full');
@@ -99,65 +119,24 @@ export default function InquiryDrawer({
         weight: item.product.weight
       }));
 
-      const payload = {
-        customerName: fullName,
-        customerPhone: mobile,
-        customerAddress: `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`,
-        customerEmail: '',
+      const orderPayload = {
+        name: fullName,
+        phone: mobile,
+        email: profile?.email || '',
+        address: `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`,
         items: itemsPayload,
-        paymentType: method,
-        amount: finalTotalBill,
-        paidAmount: paidAmt
+        paymentMethod: method,
+        total: finalTotalBill,
+        paidAmount: paidAmt,
+        couponCode: appliedCoupon?.code || '',
+        pointsRedeemed: redeemPoints ? pointsDiscount : 0
       };
 
-      if (isFirebaseConfigured && db) {
-        const orderId = `order_${Date.now()}`;
-        const orderDoc = {
-          id: orderId,
-          name: fullName,
-          phone: mobile,
-          email: '',
-          address: `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`,
-          items: itemsPayload,
-          paymentMethod: method,
-          total: finalTotalBill,
-          paidAmount: paidAmt,
-          status: 'Pending',
-          createdAt: new Date().toISOString()
-        };
-        await setDoc(doc(db, 'orders', orderId), orderDoc);
-        console.log("Order saved to Firestore successfully!");
-      } else if (!isVercel) {
-        const res = await fetch('/api/orders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          console.log("Order saved to database successfully!");
-        }
-      } else {
-        // Save to localStorage for client-side demo persistence
-        try {
-          const existing = JSON.parse(localStorage.getItem('saved_orders') || '[]');
-          existing.push({
-            id: orderId,
-            name: fullName,
-            phone: mobile,
-            address: `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`,
-            total: finalTotalBill,
-            createdAt: new Date().toISOString()
-          });
-          localStorage.setItem('saved_orders', JSON.stringify(existing));
-          console.log("Vercel demo mode: order simulated and stored in localStorage");
-        } catch (storageErr) {
-          console.error("Local storage order save failed:", storageErr);
-        }
-      }
+      await placeOrder(orderPayload);
+      console.log("Order saved successfully via placeOrder!");
+      saveAddressToLocalStorage();
     } catch (e) {
-      console.error("Failed to post order to backend:", e);
+      console.error("Failed to post order to context/backend:", e);
     }
   };
 
@@ -193,7 +172,12 @@ export default function InquiryDrawer({
   const maxDiscAmount = appliedCoupon?.maxDiscount ? Number(appliedCoupon.maxDiscount) : 99999;
   const discountAmount = Math.min(Math.round(totalPricing * discountPct), maxDiscAmount);
 
-  const finalTotalBill = Math.max(0, totalPricing + deliveryFee - discountAmount);
+  // Loyalty Reward deduction: 10 points = ₹1.00
+  const pointsAvailable = profile?.rewardPoints || 0;
+  const maxPointsDiscount = Math.floor(pointsAvailable / 10);
+  const pointsDiscount = redeemPoints ? Math.min(maxPointsDiscount, totalPricing + deliveryFee - discountAmount) : 0;
+
+  const finalTotalBill = Math.max(0, totalPricing + deliveryFee - discountAmount - pointsDiscount);
 
   // Safely calculate pay amount based on selected mode
   const payAmount = amountMode === 'full'
@@ -513,6 +497,39 @@ export default function InquiryDrawer({
                       <h4 className="font-sans font-bold text-sm uppercase tracking-wide">Enter Delivery Address</h4>
                     </div>
 
+                    {/* Customer Saved Address Quick-Picker */}
+                    {profile?.addresses && profile.addresses.length > 0 && (
+                      <div className="space-y-1.5 pb-2.5 border-b border-slate-100">
+                        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest block text-left">
+                          Apply Saved Address
+                        </span>
+                        <div className="flex space-x-2 overflow-x-auto pb-1 scrollbar-none">
+                          {profile.addresses.map((addr) => (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => {
+                                setFullName(addr.fullName);
+                                setMobile(addr.mobile);
+                                setStreetAddress(addr.streetAddress);
+                                setLandmark(addr.landmark || '');
+                                setCityStatePincode(addr.cityStatePincode);
+                                setAddressType(addr.type);
+                              }}
+                              className="text-left px-3 py-2 rounded-xl border border-slate-200 hover:border-[#A61B1B] hover:bg-[#A61B1B]/5 bg-white shrink-0 max-w-[190px] transition-all cursor-pointer"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-[9px] font-black text-[#A61B1B]">{addr.type}</span>
+                                {addr.isDefault && <span className="text-[8px] bg-[#A61B1B] text-white px-1 rounded font-bold">Default</span>}
+                              </div>
+                              <p className="text-[10px] font-bold text-slate-800 line-clamp-1 mt-1">{addr.fullName}</p>
+                              <p className="text-[9px] text-slate-500 line-clamp-1">{addr.streetAddress}</p>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Validation errors */}
                     {addressErrors.length > 0 && (
                       <div className="p-3 bg-red-50 border border-red-200 rounded-xl space-y-1">
@@ -724,6 +741,24 @@ export default function InquiryDrawer({
                       )}
                     </div>
 
+                    {/* Loyalty Points Redemption block */}
+                    {profile && profile.rewardPoints > 0 && (
+                      <div className="bg-white rounded-xl p-3.5 border border-slate-200 flex items-center justify-between text-left">
+                        <div className="space-y-0.5">
+                          <span className="text-[9px] font-mono text-slate-400 uppercase font-black tracking-wider block">Redeem Loyalty Rewards</span>
+                          <p className="text-xs font-bold text-slate-800">
+                            Use {profile.rewardPoints} points (Save ₹{Math.floor(profile.rewardPoints / 10)})
+                          </p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={redeemPoints}
+                          onChange={(e) => setRedeemPoints(e.target.checked)}
+                          className="w-5 h-5 accent-[#A61B1B] cursor-pointer"
+                        />
+                      </div>
+                    )}
+
                     {/* Exact Flipkart styled billing detail container */}
                     <div className="bg-white rounded-xl p-4.5 border border-slate-200 shadow-xs space-y-3">
                       <h4 className="text-xs font-mono font-black text-[#A61B1B] uppercase tracking-wider border-b border-gray-100 pb-2">Price Details</h4>
@@ -746,6 +781,13 @@ export default function InquiryDrawer({
                         <span>Heritage Discount (10% Off)</span>
                         <span className="font-bold text-emerald-600 font-mono">-₹{discountAmount}</span>
                       </div>
+
+                      {pointsDiscount > 0 && (
+                        <div className="flex justify-between items-center text-xs text-slate-600">
+                          <span>Loyalty points Redeemed</span>
+                          <span className="font-bold text-emerald-600 font-mono">-₹{pointsDiscount}</span>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center text-sm text-slate-900 border-t border-slate-100 pt-2.5 font-sans font-black uppercase">
                         <span>Total Payable Amount</span>

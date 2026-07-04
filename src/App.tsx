@@ -18,12 +18,18 @@ import Contact from './components/Contact';
 import Footer from './components/Footer';
 import InquiryDrawer from './components/InquiryDrawer';
 import AdminDashboard from './components/AdminDashboard';
+import AuthModal from './components/AuthModal';
+import MyAccountDashboard from './components/MyAccountDashboard';
+import { useUser } from './context/UserContext';
 import { Product } from './types';
 import { PRODUCTS, CATEGORIES } from './data/storeData';
-import { isFirebaseConfigured, db, seedDatabaseIfEmpty } from './lib/firebase';
+import { isFirebaseConfigured, db, seedDatabaseIfEmpty, isVercel } from './lib/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
 export default function App() {
+  const { user, profile, syncCartToFirestore } = useUser();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [myAccountOpen, setMyAccountOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [inquiryBag, setInquiryBag] = useState<{ product: Product; quantity: number }[]>([]);
@@ -102,6 +108,13 @@ export default function App() {
         }
       }
 
+      if (isVercel) {
+        setProductsList(PRODUCTS);
+        setCategoriesList(CATEGORIES);
+        setLoading(false);
+        return;
+      }
+
       const [prodRes, catRes] = await Promise.all([
         fetch('/api/products').catch(() => null),
         fetch('/api/categories').catch(() => null)
@@ -153,6 +166,32 @@ export default function App() {
   useEffect(() => {
     fetchStoreData();
   }, [adminOpen]);
+
+  // Load customer's cloud cart on successful login
+  useEffect(() => {
+    if (user && profile?.cart && productsList.length > 0) {
+      const mappedCart = profile.cart
+        .map((item) => {
+          const prod = productsList.find((p) => p.id === item.productId);
+          return prod ? { product: prod, quantity: item.quantity } : null;
+        })
+        .filter(Boolean) as { product: Product; quantity: number }[];
+      
+      const localCartSig = inquiryBag.map(item => `${item.product.id}:${item.quantity}`).join(',');
+      const cloudCartSig = mappedCart.map(item => `${item.product.id}:${item.quantity}`).join(',');
+      
+      if (cloudCartSig !== localCartSig && mappedCart.length > 0) {
+        setInquiryBag(mappedCart);
+      }
+    }
+  }, [user, profile?.cart, productsList]);
+
+  // Push local cart mutations to cloud Firestore securely
+  useEffect(() => {
+    if (user && profile) {
+      syncCartToFirestore(inquiryBag);
+    }
+  }, [inquiryBag, user]);
 
   // Smooth scroll helper
   const handleScrollToSection = (sectionId: string) => {
@@ -210,6 +249,20 @@ export default function App() {
     return <AdminDashboard onClose={handleCloseAdmin} />;
   }
 
+  // If Customer My Account dashboard is active, render customer profile workspace
+  if (myAccountOpen) {
+    return (
+      <MyAccountDashboard 
+        onClose={() => setMyAccountOpen(false)}
+        onOpenCart={() => {
+          setMyAccountOpen(false);
+          setInquiryDrawerOpen(true);
+        }}
+        onAddToCart={handleAddToInquiry}
+      />
+    );
+  }
+
   return (
     <motion.div
       key="main-app-content"
@@ -228,6 +281,8 @@ export default function App() {
         onSearchChange={setSearchQuery}
         inquiryCount={inquiryBag.reduce((total, item) => total + item.quantity, 0)}
         onOpenInquiry={() => setInquiryDrawerOpen(true)}
+        onLoginClick={() => setAuthModalOpen(true)}
+        onMyAccountClick={() => setMyAccountOpen(true)}
       />
 
       {/* Main view sections */}
@@ -272,6 +327,16 @@ export default function App() {
         inquiryList={inquiryBag}
         onRemoveItem={handleRemoveInquiryItem}
         onUpdateQuantity={handleUpdateInquiryItemQuantity}
+      />
+
+      {/* Customer Unified Auth Modal (Email/Password, Registration, Mobile OTP) */}
+      <AuthModal 
+        isOpen={authModalOpen} 
+        onClose={() => setAuthModalOpen(false)} 
+        onSuccess={() => {
+          // Open dashboard upon successful login/register
+          setMyAccountOpen(true);
+        }}
       />
 
     </motion.div>

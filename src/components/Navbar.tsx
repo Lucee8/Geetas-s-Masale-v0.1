@@ -5,7 +5,8 @@
 
   import React, { useState, useEffect } from 'react';
   import { motion, AnimatePresence } from 'motion/react';
-  import { Search, ShoppingBag, Menu, X, Phone, MessageSquare } from 'lucide-react';
+  import { Search, ShoppingBag, Menu, X, Phone, MessageSquare, User, ChevronRight } from 'lucide-react';
+  import { useUser } from '../context/UserContext';
 
   interface NavbarProps {
     onNavigate: (sectionId: string) => void;
@@ -13,6 +14,8 @@
     onSearchChange: (query: string) => void;
     inquiryCount: number;
     onOpenInquiry: () => void;
+    onLoginClick: () => void;
+    onMyAccountClick: () => void;
   }
 
   export default function Navbar({
@@ -21,11 +24,15 @@
     onSearchChange,
     inquiryCount,
     onOpenInquiry,
+    onLoginClick,
+    onMyAccountClick
   }: NavbarProps) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [showSearch, setShowSearch] = useState(false);
     const [logoError, setLogoError] = useState(false);
+
+    const { user, profile } = useUser();
 
     useEffect(() => {
       const handleScroll = () => {
@@ -162,6 +169,25 @@
                 </button>
               </div>
 
+              {/* Customer Account Avatar / Login button */}
+              <button
+                onClick={user ? onMyAccountClick : onLoginClick}
+                className={`p-2.5 rounded-full border transition-all relative group cursor-pointer ${
+                  user 
+                    ? 'bg-[#A61B1B] border-[#A61B1B] text-white shadow-md shadow-[#A61B1B]/15'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                }`}
+                aria-label={user ? "My Account" : "Login"}
+              >
+                {user ? (
+                  <span className="w-5 h-5 flex items-center justify-center font-bold text-xs">
+                    {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                  </span>
+                ) : (
+                  <User className="w-5 h-5 group-hover:scale-110 duration-300" />
+                )}
+              </button>
+
               {/* Glowing Shopping/Inquiry bag indicator - Styled as Red Bag with soft Red circle container */}
               <button
                 onClick={onOpenInquiry}
@@ -227,24 +253,58 @@
                   </button>
                 ))}
 
-                <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
-                  <a
-                    href="tel:+917620428920"
-                    className="flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-[#A61B1B] text-white font-mono text-xs font-semibold tracking-wider hover:bg-red-800 transition shadow-sm"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>CALL STORE</span>
-                  </a>
-                  <button
-                    onClick={() => {
-                      onOpenInquiry();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-slate-900 text-white font-sans text-xs font-bold tracking-wider hover:bg-slate-800 transition cursor-pointer"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span>BAG ({inquiryCount})</span>
-                  </button>
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  {user ? (
+                    <button
+                      onClick={() => {
+                        onMyAccountClick();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-[#A61B1B]/5 hover:bg-[#A61B1B]/10 rounded-xl border border-[#A61B1B]/15 text-slate-800 transition-all cursor-pointer"
+                    >
+                      <div className="flex items-center space-x-2.5">
+                        <div className="w-8 h-8 rounded-full bg-[#A61B1B] text-white font-bold flex items-center justify-center text-sm">
+                          {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                        </div>
+                        <div className="text-left">
+                          <p className="text-[10px] font-mono tracking-wider text-[#A61B1B] uppercase font-bold">Logged In As</p>
+                          <p className="text-xs font-bold text-slate-900">{profile?.name || 'Customer'}</p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        onLoginClick();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl border border-[#A61B1B]/20 hover:bg-slate-50 text-slate-800 font-sans text-xs font-bold tracking-wider uppercase transition cursor-pointer"
+                    >
+                      <User className="w-4 h-4 text-[#A61B1B]" />
+                      <span>LOG IN / REGISTER</span>
+                    </button>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <a
+                      href="tel:+917620428920"
+                      className="flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-[#A61B1B] text-white font-mono text-xs font-semibold tracking-wider hover:bg-red-800 transition shadow-sm"
+                    >
+                      <Phone className="w-4 h-4" />
+                      <span>CALL STORE</span>
+                    </a>
+                    <button
+                      onClick={() => {
+                        onOpenInquiry();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center justify-center space-x-2 py-2.5 rounded-xl bg-slate-900 text-white font-sans text-xs font-bold tracking-wider hover:bg-slate-800 transition cursor-pointer"
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>BAG ({inquiryCount})</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
