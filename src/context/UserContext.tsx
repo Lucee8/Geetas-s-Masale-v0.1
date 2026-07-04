@@ -302,7 +302,57 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!isFirebaseConfigured || !auth) {
-      loginAsDemo();
+      // Mock login fallback if firebase is not configured
+      setIsDemoUser(true);
+      const mockUid = `mock_user_${Date.now()}`;
+      let savedProfile: UserProfile | null = null;
+      try {
+        const stored = localStorage.getItem(`mock_profile_${email}`);
+        if (stored) {
+          savedProfile = JSON.parse(stored);
+        }
+      } catch (e) {}
+
+      const mockProfile: UserProfile = savedProfile || {
+        uid: mockUid,
+        name: email.split('@')[0],
+        email: email,
+        phone: '+91 9999999999',
+        rewardPoints: 120,
+        cart: [],
+        wishlist: [],
+        addresses: [
+          {
+            id: 'address_demo_1',
+            type: 'HOME',
+            fullName: 'Bhavesh Koyande',
+            streetAddress: 'Flat 402, Ocean Vista Heights, Devbag Beach Road',
+            landmark: 'Near Malvan Jetty',
+            cityStatePincode: 'Malvan, Maharashtra - 416606',
+            mobile: '+91 9999999999',
+            isDefault: true
+          }
+        ],
+        recentlyViewed: ['p1', 'p2'],
+        couponsUsed: ['GEETA10'],
+        preferences: {
+          marketing: true,
+          orderUpdates: true
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      setProfile(mockProfile);
+      setUser({
+        uid: mockProfile.uid,
+        displayName: mockProfile.name,
+        email: email,
+        phoneNumber: mockProfile.phone,
+        emailVerified: true,
+        isAnonymous: false,
+      } as any);
+      setLoading(false);
       return;
     }
     try {
@@ -318,7 +368,42 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const registerWithEmail = async (email: string, pass: string, name: string, phone?: string) => {
     if (!isFirebaseConfigured || !auth || !db) {
-      throw new Error('Firebase is not configured in this app environment.');
+      console.warn("Firebase not configured. Registering as mock demo user.");
+      
+      const mockUid = `mock_user_${Date.now()}`;
+      const mockProfile: UserProfile = {
+        uid: mockUid,
+        name: name,
+        email: email,
+        phone: phone || '',
+        rewardPoints: 50, // Welcome loyalty points
+        cart: [],
+        wishlist: [],
+        addresses: [],
+        recentlyViewed: [],
+        couponsUsed: [],
+        preferences: {
+          marketing: true,
+          orderUpdates: true
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Store in localStorage to simulate persistence in demo mode
+      localStorage.setItem(`mock_profile_${email}`, JSON.stringify(mockProfile));
+      
+      setProfile(mockProfile);
+      setUser({
+        uid: mockUid,
+        displayName: name,
+        email: email,
+        phoneNumber: phone || '',
+        emailVerified: true,
+        isAnonymous: false,
+      } as any);
+      setIsDemoUser(true);
+      return;
     }
     const cred = await createUserWithEmailAndPassword(auth, email, pass);
     
@@ -348,7 +433,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const forgotPassword = async (email: string) => {
     if (!isFirebaseConfigured || !auth) {
-      throw new Error('Firebase is not configured.');
+      console.warn("Firebase not configured. Simulating successful password reset email.");
+      return;
     }
     await sendPasswordResetEmail(auth, email);
   };
