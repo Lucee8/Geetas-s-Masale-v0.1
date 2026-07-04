@@ -4,7 +4,7 @@ Welcome! If you want your React frontend and your Express backend (`/api/*` endp
 
 Because we built a **unified full-stack architecture** (Express serving your React frontend), you only need to deploy **one single Web Service** on Render, and both your store and your backend API will run under the same URL!
 
----     
+---
 
 ## 🧭 TABLE OF CONTENTS
 1. [📦 Why Render is perfect for your App](#1-why-render-is-perfect-for-your-app)

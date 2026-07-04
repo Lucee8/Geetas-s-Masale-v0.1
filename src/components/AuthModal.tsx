@@ -312,7 +312,7 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
             )}
 
             {/* reCAPTCHA Invisible Element container */}
-            <div id="recaptcha-container" ref={recaptchaContainerRef} className="hidden" />
+            <div id="recaptcha-container" ref={recaptchaContainerRef} className="absolute invisible pointer-events-none" />
 
             {/* EMAIL LOGIN VIEW */}
             {mode === 'login' && (
