@@ -15,7 +15,9 @@ import {
   User,
   RecaptchaVerifier,
   signInWithPhoneNumber,
-  ConfirmationResult
+  ConfirmationResult,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { 
   doc, 
@@ -48,6 +50,7 @@ export interface UserProfile {
   name: string;
   email: string;
   phone?: string;
+  photoURL?: string;
   rewardPoints: number;
   cart?: { productId: string; quantity: number }[];
   wishlist?: string[];
@@ -108,6 +111,7 @@ interface UserContextType {
   isDemoUser: boolean;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   loginAsDemo: () => void;
+  loginWithGoogle: () => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string, phone?: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -183,7 +187,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        setProfile(docSnap.data() as UserProfile);
+        const existingProfile = docSnap.data() as UserProfile;
+        const updates: Partial<UserProfile> = {};
+        if (firebaseUser.photoURL && existingProfile.photoURL !== firebaseUser.photoURL) {
+          updates.photoURL = firebaseUser.photoURL;
+        }
+        if (firebaseUser.email && !existingProfile.email) {
+          updates.email = firebaseUser.email;
+        }
+        if (firebaseUser.phoneNumber && !existingProfile.phone) {
+          updates.phone = firebaseUser.phoneNumber;
+        }
+        if (Object.keys(updates).length > 0) {
+          await updateDoc(docRef, updates);
+          setProfile({ ...existingProfile, ...updates } as UserProfile);
+        } else {
+          setProfile(existingProfile);
+        }
       } else {
         // Create initial default profile
         const newProfile: UserProfile = {
@@ -191,6 +211,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           name: firebaseUser.displayName || 'Valued Customer',
           email: firebaseUser.email || '',
           phone: firebaseUser.phoneNumber || '',
+          photoURL: firebaseUser.photoURL || '',
           rewardPoints: 50, // Welcome gift points!
           cart: [],
           wishlist: [],
@@ -293,6 +314,68 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       isAnonymous: false,
     } as any);
     setLoading(false);
+  };
+
+  const loginWithGoogle = async () => {
+    if (!isFirebaseConfigured || !auth) {
+      if (isProduction) {
+        throw new Error('Firebase is not configured on this production environment. Please ensure you have added the required VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID in your Render settings.');
+      }
+      // Sandbox mode: mock Google Login
+      setIsDemoUser(true);
+      const mockUid = `mock_google_user_${Date.now()}`;
+      const mockProfile: UserProfile = {
+        uid: mockUid,
+        name: 'Demo Google User',
+        email: 'demo-google@example.com',
+        phone: '',
+        photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60',
+        rewardPoints: 120,
+        cart: [],
+        wishlist: [],
+        addresses: [
+          {
+            id: 'address_google_1',
+            type: 'HOME',
+            fullName: 'Demo Google User',
+            streetAddress: 'Flat 402, Ocean Vista Heights, Devbag Beach Road',
+            landmark: 'Near Malvan Jetty',
+            cityStatePincode: 'Malvan, Maharashtra - 416606',
+            mobile: '+91 9999999999',
+            isDefault: true
+          }
+        ],
+        recentlyViewed: ['p1', 'p2'],
+        couponsUsed: ['GEETA10'],
+        preferences: {
+          marketing: true,
+          orderUpdates: true
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      setProfile(mockProfile);
+      setUser({
+        uid: mockProfile.uid,
+        displayName: mockProfile.name,
+        email: mockProfile.email,
+        phoneNumber: '',
+        photoURL: mockProfile.photoURL,
+        emailVerified: true,
+        isAnonymous: false,
+      } as any);
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      console.error("Google Sign-In Error:", error);
+      throw error;
+    }
   };
 
   // Auth Functions
@@ -790,6 +873,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       isDemoUser,
       loginWithEmail,
       loginAsDemo,
+      loginWithGoogle,
       registerWithEmail,
       forgotPassword,
       logout,
