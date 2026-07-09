@@ -47,6 +47,16 @@ export const isFirebaseConfigured = !!(
   firebaseConfig.projectId
 );
 
+if (typeof window !== 'undefined') {
+  console.log("🔍 Firebase Config Diagnostic:", {
+    isConfigured: isFirebaseConfigured,
+    apiKeyLoaded: !!firebaseConfig.apiKey,
+    projectIdLoaded: !!firebaseConfig.projectId,
+    projectIdValue: firebaseConfig.projectId || 'Not set',
+    windowConfigPresent: !!(window as any).__FIREBASE_CONFIG__
+  });
+}
+
 export const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
 
 let app;
