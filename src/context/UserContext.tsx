@@ -318,9 +318,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithGoogle = async () => {
     if (!isFirebaseConfigured || !auth) {
-      if (isProduction) {
-        throw new Error('Firebase is not configured on this production environment. Please ensure you have added the required VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID in your Render settings.');
-      }
+      console.warn('Firebase is not configured on this environment. Falling back to Google Login Sandbox/Demo Mode.');
       // Sandbox mode: mock Google Login
       setIsDemoUser(true);
       const mockUid = `mock_google_user_${Date.now()}`;
@@ -385,9 +383,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!isFirebaseConfigured || !auth) {
-      if (isProduction) {
-        throw new Error('Firebase is not configured on this production environment. Please ensure you have added the required VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID in your Render settings.');
-      }
+      console.warn('Firebase is not configured on this environment. Falling back to Email Login Sandbox/Demo Mode.');
       // Mock login fallback if firebase is not configured
       setIsDemoUser(true);
       const mockUid = `mock_user_${Date.now()}`;
@@ -540,9 +536,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateUserProfile = async (updates: Partial<UserProfile>) => {
-    if (!db) return;
     const targetUid = user?.uid;
-    if (!targetUid) {
+    if (!db || !targetUid) {
       // Demo User updates
       if (isDemoUser && profile) {
         const updated = { ...profile, ...updates, updatedAt: new Date().toISOString() };
@@ -572,12 +567,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Cart syncing
   const syncCartToFirestore = async (cartItems: { product: Product; quantity: number }[]) => {
-    if (!db || !user) return;
+    const serializableCart = cartItems.map(item => ({
+      productId: item.product.id,
+      quantity: item.quantity
+    }));
+    
+    if (!db || !user) {
+      if (isDemoUser && profile) {
+        setProfile(prev => prev ? { ...prev, cart: serializableCart } : null);
+      }
+      return;
+    }
+    
     try {
-      const serializableCart = cartItems.map(item => ({
-        productId: item.product.id,
-        quantity: item.quantity
-      }));
       await updateDoc(doc(db, 'users', user.uid), {
         cart: serializableCart,
         updatedAt: new Date().toISOString()
