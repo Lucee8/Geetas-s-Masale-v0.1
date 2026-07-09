@@ -172,17 +172,28 @@
               {/* Customer Account Avatar / Login button */}
               <button
                 onClick={user ? onMyAccountClick : onLoginClick}
-                className={`p-2.5 rounded-full border transition-all relative group cursor-pointer ${
+                className={`rounded-full border transition-all relative group cursor-pointer overflow-hidden flex items-center justify-center ${
                   user 
-                    ? 'bg-[#A61B1B] border-[#A61B1B] text-white shadow-md shadow-[#A61B1B]/15'
-                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                    ? (profile?.photoURL || user?.photoURL) 
+                      ? 'p-0 border-2 border-[#A61B1B] w-10 h-10 shadow-md shadow-[#A61B1B]/15' 
+                      : 'bg-[#A61B1B] border-[#A61B1B] text-white shadow-md shadow-[#A61B1B]/15 w-10 h-10'
+                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 w-10 h-10'
                 }`}
                 aria-label={user ? "My Account" : "Login"}
               >
                 {user ? (
-                  <span className="w-5 h-5 flex items-center justify-center font-bold text-xs">
-                    {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
-                  </span>
+                  (profile?.photoURL || user?.photoURL) ? (
+                    <img
+                      src={profile?.photoURL || user?.photoURL}
+                      alt={profile?.name || "User Avatar"}
+                      className="w-full h-full object-cover rounded-full"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="font-bold text-xs">
+                      {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                    </span>
+                  )
                 ) : (
                   <User className="w-5 h-5 group-hover:scale-110 duration-300" />
                 )}
@@ -263,9 +274,18 @@
                       className="w-full flex items-center justify-between px-4 py-3 bg-[#A61B1B]/5 hover:bg-[#A61B1B]/10 rounded-xl border border-[#A61B1B]/15 text-slate-800 transition-all cursor-pointer"
                     >
                       <div className="flex items-center space-x-2.5">
-                        <div className="w-8 h-8 rounded-full bg-[#A61B1B] text-white font-bold flex items-center justify-center text-sm">
-                          {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
-                        </div>
+                        {(profile?.photoURL || user?.photoURL) ? (
+                          <img
+                            src={profile?.photoURL || user?.photoURL}
+                            alt={profile?.name || "User Avatar"}
+                            className="w-8 h-8 rounded-full object-cover border-2 border-[#A61B1B]/20"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-[#A61B1B] text-white font-bold flex items-center justify-center text-sm">
+                            {profile?.name ? profile.name.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
+                          </div>
+                        )}
                         <div className="text-left">
                           <p className="text-[10px] font-mono tracking-wider text-[#A61B1B] uppercase font-bold">Logged In As</p>
                           <p className="text-xs font-bold text-slate-900">{profile?.name || 'Customer'}</p>
