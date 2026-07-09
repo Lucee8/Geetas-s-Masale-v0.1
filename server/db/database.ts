@@ -90,7 +90,8 @@ export interface Order {
   amount: number;
   paidAmount: number;
   pendingAmount: number;
-  status: 'Pending' | 'Confirmed' | 'Processing' | 'Dispatched' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+  status: 'Inquiry' | 'Pending' | 'Confirmed' | 'Processing' | 'Dispatched' | 'Out for Delivery' | 'Delivered' | 'Cancelled';
+  paymentStatus?: 'Pending' | 'Paid' | 'Failed';
   trackingNumber?: string;
   createdAt: string;
 }

@@ -184,7 +184,8 @@ router.post('/orders', (req, res) => {
     amount: parsedAmount,
     paidAmount: parsedPaid,
     pendingAmount: Math.max(0, parsedAmount - parsedPaid),
-    status: paymentType === 'UPI' && parsedPaid > 0 ? 'Confirmed' : 'Pending',
+    status: 'Inquiry',
+    paymentStatus: 'Pending',
     createdAt: new Date().toISOString()
   };
 
@@ -491,6 +492,19 @@ router.put('/admin/orders/:id/status', authenticateJWT, (req, res) => {
 
   saveOrders(orders);
   res.json({ message: 'Order status updated successfully', order: orders[orderIdx] });
+});
+
+router.put('/admin/orders/:id/payment-status', authenticateJWT, (req, res) => {
+  const { paymentStatus } = req.body;
+  if (!paymentStatus) return res.status(400).json({ error: 'paymentStatus is required' });
+
+  const orders = getOrders();
+  const orderIdx = orders.findIndex(o => o.id === req.params.id);
+  if (orderIdx === -1) return res.status(404).json({ error: 'Order not found' });
+
+  orders[orderIdx].paymentStatus = paymentStatus;
+  saveOrders(orders);
+  res.json({ message: 'Payment status updated successfully', order: orders[orderIdx] });
 });
 
 router.put('/admin/orders/:id/tracking', authenticateJWT, (req, res) => {

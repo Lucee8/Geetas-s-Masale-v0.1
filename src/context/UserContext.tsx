@@ -84,7 +84,8 @@ export interface Order {
   paymentMethod: 'COD' | 'UPI';
   total: number;
   paidAmount: number;
-  status: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+  status: 'Inquiry' | 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+  paymentStatus?: 'Pending' | 'Paid' | 'Failed';
   createdAt: string;
   couponCode?: string;
   pointsRedeemed?: number;
@@ -657,7 +658,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       ...orderData,
       id: orderId,
       userId: activeUid,
-      status: 'Pending',
+      status: 'Inquiry',
+      paymentStatus: 'Pending',
       createdAt: new Date().toISOString()
     };
 

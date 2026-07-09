@@ -22,7 +22,8 @@ import {
   MapPin,
   Home,
   Briefcase,
-  User
+  User,
+  CheckCircle
 } from 'lucide-react';
 import { Product } from '../types';
 import { isFirebaseConfigured, db, isVercel } from '../lib/firebase';
@@ -35,6 +36,7 @@ interface InquiryDrawerProps {
   inquiryList: { product: Product; quantity: number }[];
   onRemoveItem: (productId: string) => void;
   onUpdateQuantity: (productId: string, qty: number) => void;
+  onClearCart?: () => void;
 }
 
 export default function InquiryDrawer({
@@ -43,9 +45,12 @@ export default function InquiryDrawer({
   inquiryList,
   onRemoveItem,
   onUpdateQuantity,
+  onClearCart,
 }: InquiryDrawerProps) {
   const { profile, placeOrder } = useUser();
   const [step, setStep] = useState<'bag' | 'address' | 'summary' | 'pay'>('bag');
+  const [confirmedOrder, setConfirmedOrder] = useState<any | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   
   // Customer info states initialized from LocalStorage for seamless sessions
   const [fullName, setFullName] = useState(() => localStorage.getItem('gm_fullName') || '');
@@ -110,6 +115,10 @@ export default function InquiryDrawer({
   };
 
   const submitOrderToBackend = async (method: 'COD' | 'UPI', paidAmt = 0) => {
+    if (confirmedOrder) {
+      console.log("Order already confirmed in this session, returning existing order ID:", confirmedOrder.id);
+      return confirmedOrder;
+    }
     try {
       const itemsPayload = inquiryList.map(item => ({
         productId: item.product.id,
@@ -132,11 +141,17 @@ export default function InquiryDrawer({
         pointsRedeemed: redeemPoints ? pointsDiscount : 0
       };
 
-      await placeOrder(orderPayload);
-      console.log("Order saved successfully via placeOrder!");
+      const result = await placeOrder(orderPayload);
+      console.log("Order saved successfully via placeOrder!", result);
+      setConfirmedOrder(result);
+      if (onClearCart) {
+        onClearCart();
+      }
       saveAddressToLocalStorage();
+      return result;
     } catch (e) {
       console.error("Failed to post order to context/backend:", e);
+      return null;
     }
   };
 
@@ -154,14 +169,15 @@ export default function InquiryDrawer({
       setCouponCode('');
       setAppliedCoupon(null);
       setCouponError('');
+      setConfirmedOrder(null);
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (inquiryList.length === 0) {
+    if (inquiryList.length === 0 && !confirmedOrder) {
       setStep('bag');
     }
-  }, [inquiryList]);
+  }, [inquiryList, confirmedOrder]);
 
   // Pricing calculations
   const totalPricing = inquiryList.reduce((acc, item) => acc + item.product.mrp * item.quantity, 0);
@@ -218,6 +234,53 @@ export default function InquiryDrawer({
       saveAddressToLocalStorage();
       setStep('summary');
     }
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!validateAddress()) {
+      return;
+    }
+    setIsConfirming(true);
+    try {
+      const order = await submitOrderToBackend('UPI', 0);
+      if (order) {
+        setStep('pay');
+      }
+    } catch (e) {
+      console.error("Failed to confirm order:", e);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const handleTrackOrderOnWhatsApp = () => {
+    if (!confirmedOrder) return;
+
+    let text = `Hello Geeta's Masale! I have confirmed my order on the app.\n\n`;
+
+    text += `*📌 ORDER ID:* ${confirmedOrder.id}\n`;
+    text += `*📍 DELIVER TO:* \n`;
+    text += `• *Name:* ${confirmedOrder.name || fullName}\n`;
+    text += `• *Address:* ${confirmedOrder.address || `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`}\n`;
+    text += `• *Mobile:* ${confirmedOrder.phone || mobile}\n\n`;
+
+    text += `*🛍 ORDER ITEMS:* \n`;
+    confirmedOrder.items.forEach((item: any, index: number) => {
+      text += `${index + 1}. *${item.productName}*\n`;
+      text += `   - Size: ${item.weight || 'N/A'}\n`;
+      text += `   - Qty: ${item.quantity}\n`;
+      text += `   - Price: Rs. ${item.price} each\n\n`;
+    });
+
+    text += `*💰 BILLING SUMMARY:* \n`;
+    text += `• *Net Total Bill*: *Rs. ${confirmedOrder.total}*\n`;
+    text += `• *Order Status*: *Inquiry*\n`;
+    text += `• *Payment Status*: *Pending*\n\n`;
+    
+    text += `📸 *[IMPORTANT]*: I am attaching my payment success screenshot with this message for manual verification. Please confirm my shipment and share the tracking ID. Thank you!`;
+
+    const url = `https://api.whatsapp.com/send?phone=917620428920&text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   // WhatsApp transmission with complete customer payload
@@ -991,13 +1054,14 @@ export default function InquiryDrawer({
                       <span>Order on WhatsApp</span>
                     </button>
 
-                    {/* Pay via UPI */}
+                    {/* Confirm Order */}
                     <button
-                      onClick={() => setStep('pay')}
-                      className="inline-flex items-center justify-center space-x-1.5 py-3.5 px-1 rounded-xl bg-[#A61B1B] hover:bg-rose-950 text-white text-[10px] font-sans font-extrabold uppercase transition shadow-md cursor-pointer"
+                      onClick={handleConfirmOrder}
+                      disabled={isConfirming}
+                      className="inline-flex items-center justify-center space-x-1.5 py-3.5 px-1 rounded-xl bg-[#A61B1B] hover:bg-rose-950 text-white text-[10px] font-sans font-extrabold uppercase transition shadow-md cursor-pointer disabled:opacity-50"
                     >
-                      <CreditCard className="w-3.5 h-3.5 shrink-0" />
-                      <span>Proceed with Pay</span>
+                      <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{isConfirming ? 'Confirming...' : 'Confirm Order'}</span>
                       <ArrowRight className="w-3 h-3 text-white" />
                     </button>
                   </div>
@@ -1092,6 +1156,15 @@ export default function InquiryDrawer({
                           <Smartphone className="w-3.5 h-3.5 shrink-0 text-white" />
                           <span>Any other UPI App (₹{payAmount})</span>
                         </a>
+
+                        {/* Track Order on WhatsApp */}
+                        <button
+                          onClick={handleTrackOrderOnWhatsApp}
+                          className="w-full mt-2.5 inline-flex items-center justify-center space-x-2 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-sans font-black tracking-widest uppercase transition-all shadow-md text-center cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 shrink-0 text-white fill-current" />
+                          <span>Track Order on WhatsApp</span>
+                        </button>
                       </div>
                     ) : (
                       <>
@@ -1112,6 +1185,15 @@ export default function InquiryDrawer({
                           <Smartphone className="w-4 h-4 animate-pulse shrink-0 text-white" />
                           <span>Pay via UPI App (₹{payAmount})</span>
                         </a>
+
+                        {/* Track Order on WhatsApp */}
+                        <button
+                          onClick={handleTrackOrderOnWhatsApp}
+                          className="w-full mt-3 inline-flex items-center justify-center space-x-2.5 py-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-sans font-black tracking-widest uppercase transition-all shadow-[0_10px_25px_rgba(16,185,129,0.15)] text-center active:scale-[0.98] cursor-pointer"
+                        >
+                          <MessageSquare className="w-4 h-4 shrink-0 text-white fill-current" />
+                          <span>Track Order on WhatsApp</span>
+                        </button>
 
                         <p className="text-[9px] font-sans text-center text-gray-400 select-none pt-1 leading-normal">
                           This will automatically open your device's payment app prompt (e.g. Google Pay, PhonePe, Paytm, or FamPay) to complete the transaction safely and securely.

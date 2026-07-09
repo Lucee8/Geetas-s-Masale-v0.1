@@ -327,6 +327,7 @@ export default function App() {
         inquiryList={inquiryBag}
         onRemoveItem={handleRemoveInquiryItem}
         onUpdateQuantity={handleUpdateInquiryItemQuantity}
+        onClearCart={() => setInquiryBag([])}
       />
 
       {/* Customer Unified Auth Modal (Email/Password, Registration, Mobile OTP) */}
