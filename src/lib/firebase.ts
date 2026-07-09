@@ -61,12 +61,7 @@ export const isVercel = typeof window !== 'undefined' && window.location.hostnam
 
 export const isProduction = typeof window !== 'undefined' && (
   window.location.hostname.includes('onrender.com') ||
-  window.location.hostname.includes('vercel.app') ||
-  (!window.location.hostname.includes('localhost') && 
-   !window.location.hostname.includes('127.0.0.1') && 
-   !window.location.hostname.includes('run.app') &&
-   !window.location.hostname.includes('stackblitz') &&
-   !window.location.hostname.includes('webcontainer'))
+  window.location.hostname.includes('vercel.app')
 );
 
 let app;
@@ -157,4 +152,4 @@ export async function seedDatabaseIfEmpty() {
       );
     }
   }
-} 
+}
