@@ -29,7 +29,7 @@ import {
   orderBy,
   addDoc
 } from 'firebase/firestore';
-import { isFirebaseConfigured, db, auth } from '../lib/firebase';
+import { isFirebaseConfigured, db, auth, isProduction } from '../lib/firebase';
 import { Product } from '../types';
 
 export interface SavedAddress {
@@ -302,6 +302,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     if (!isFirebaseConfigured || !auth) {
+      if (isProduction) {
+        throw new Error('Firebase is not configured on this production environment. Please ensure you have added the required VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID in your Render settings.');
+      }
       // Mock login fallback if firebase is not configured
       setIsDemoUser(true);
       const mockUid = `mock_user_${Date.now()}`;
@@ -687,6 +690,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const sendOTP = async (phoneNumber: string, verifier: any) => {
     if (!isFirebaseConfigured || !auth) {
+      if (isProduction) {
+        throw new Error('Firebase is not configured on this production environment. Please ensure you have added VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID under Environment Variables in your Render dashboard.');
+      }
       // Sandbox mode: mock OTP transmission
       console.log(`[Demo Mobile Auth] OTP requested for ${phoneNumber}. Direct fallback activated.`);
       return 'sandbox_mode';
@@ -699,12 +705,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       return confirmationResult;
     } catch (err: any) {
       console.error('Firebase signInWithPhoneNumber failed:', err);
+      if (isProduction) {
+        let extraMsg = '';
+        if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('unauthorized-domain'))) {
+          extraMsg = ' (Your Render URL is not added to the "Authorized Domains" list in your Firebase Console. Please add geetas-s-masale-v0-1.onrender.com under Firebase Console -> Authentication -> Settings -> Authorized Domains)';
+        }
+        throw new Error(err.message || `Failed to send OTP: ${err.code || err}${extraMsg}`);
+      }
       // If error occurs (e.g. captcha issues or provider disabled), fallback gracefully to sandbox flow
       return 'sandbox_mode';
     }
   };
 
   const verifyOTP = async (otpCode: string, confirmationResultOrPhone: any) => {
+    if (isProduction && (confirmationResultOrPhone === 'sandbox_mode' || typeof confirmationResultOrPhone === 'string')) {
+      throw new Error('Sandbox/Demo Mobile Auth is disabled on production. Real OTP verification is required.');
+    }
+
     if (confirmationResultOrPhone === 'sandbox_mode' || typeof confirmationResultOrPhone === 'string') {
       // Handle Simulation / Sandbox Login
       const mockPhone = typeof confirmationResultOrPhone === 'string' && confirmationResultOrPhone !== 'sandbox_mode' 

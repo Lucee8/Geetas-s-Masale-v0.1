@@ -20,6 +20,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { isProduction } from '../lib/firebase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -189,6 +190,9 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       setOtpConfirmation(result);
       
       if (result === 'sandbox_mode') {
+        if (isProduction) {
+          throw new Error('Sandbox/Demo Mobile Auth is disabled on production. Real SMS OTP is required.');
+        }
         setIsSandboxOTP(true);
         setInfoMessage('Sandbox Mode: A demo code has been generated. Use verification code: 123456');
       } else {
@@ -198,11 +202,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       setMode('otp');
     } catch (err: any) {
       console.error('OTP sending failed:', err);
-      // Fallback sandbox activation
-      setIsSandboxOTP(true);
-      setOtpConfirmation('sandbox_mode');
-      setInfoMessage('Sandbox Mode: Fallback activated. Please use verification code: 123456');
-      setMode('otp');
+      if (isProduction) {
+        setError(err.message || 'OTP transmission failed. Please configure or verify your Firebase setup and authorized domains.');
+      } else {
+        // Fallback sandbox activation
+        setIsSandboxOTP(true);
+        setOtpConfirmation('sandbox_mode');
+        setInfoMessage('Sandbox Mode: Fallback activated. Please use verification code: 123456');
+        setMode('otp');
+      }
     } finally {
       setLoading(false);
     }
@@ -375,14 +383,16 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
                   {loading ? 'Authenticating...' : 'Log In'}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handleDemoLogin}
-                  className="w-full py-2.5 rounded-xl border border-amber-500/30 hover:border-amber-500 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center space-x-2 cursor-pointer"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
-                  <span>Quick Demo Login (Bypass Auth)</span>
-                </button>
+                {!isProduction && (
+                  <button
+                    type="button"
+                    onClick={handleDemoLogin}
+                    className="w-full py-2.5 rounded-xl border border-amber-500/30 hover:border-amber-500 bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-600 animate-pulse" />
+                    <span>Quick Demo Login (Bypass Auth)</span>
+                  </button>
+                )}
 
                 {/* Divider */}
                 <div className="relative my-6 text-center">
