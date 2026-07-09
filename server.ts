@@ -40,22 +40,23 @@ async function startServer() {
   } else {
     console.log('Serving production-built static assets...');
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    // Disable automatic serving of index.html so the fallback get('*') can run and inject environment variables at runtime
+    app.use(express.static(distPath, { index: false }));
     // Support SPA router fallback and inject server-side env variables
     app.get('*', (req, res) => {
       const indexPath = path.join(distPath, 'index.html');
       try {
         let html = fs.readFileSync(indexPath, 'utf8');
         
-        // Find configuration from process.env (supports both exact lowercase names and standard uppercase ones)
+        // Find configuration from process.env (supports both exact lowercase names, standard uppercase ones, and VITE_ prefixed ones)
         const fbConfig = {
-          apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.apiKey || '',
-          authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.authDomain || '',
-          projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.projectId || '',
-          storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.storageBucket || '',
-          messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.messagingSenderId || '',
-          appId: process.env.VITE_FIREBASE_APP_ID || process.env.appId || '',
-          measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || process.env.measurementId || ''
+          apiKey: process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY || process.env.apiKey || process.env.API_KEY || '',
+          authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.FIREBASE_AUTH_DOMAIN || process.env.authDomain || process.env.AUTH_DOMAIN || '',
+          projectId: process.env.VITE_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || process.env.projectId || process.env.PROJECT_ID || '',
+          storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || process.env.storageBucket || process.env.STORAGE_BUCKET || '',
+          messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.FIREBASE_MESSAGING_SENDER_ID || process.env.messagingSenderId || process.env.MESSAGING_SENDER_ID || '',
+          appId: process.env.VITE_FIREBASE_APP_ID || process.env.FIREBASE_APP_ID || process.env.appId || process.env.APP_ID || '',
+          measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || process.env.FIREBASE_MEASUREMENT_ID || process.env.measurementId || process.env.MEASUREMENT_ID || ''
         };
         
         if (fbConfig.apiKey && fbConfig.projectId) {
