@@ -11,7 +11,7 @@ import Kashmirimirchi from '../assets/images/Masale/Kashmiri mirchi powder.webP'
 import specialbhajka from '../assets/images/Masale/Malvani special bhajka masala.webP';
 import muttonmasala from '../assets/images/Masale/malvani special mutton masala.webP';
 import currymasala from '../assets/images/Masale/malvani fish curry masala.webP';
-import KhobraLasunChutney from '../assets/images/Masale/Khobra Lasun Chutney.webP';
+import KhobraLasunChutney from '../assets/images/Masale/khobra lasun chutney.webP';
 import kandaLasunMasala from '../assets/images/Masale/Kanda lasun masala.webP';
 import specialmisal from '../assets/images/Masale/special misal masala.webP';
 import shengdanachutney from '../assets/images/Masale/shengdana chutney.webP';
