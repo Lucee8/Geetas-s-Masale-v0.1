@@ -4,7 +4,7 @@
  */
 
 import { Product, Recipe, Testimonial, GalleryItem } from '../types';
-import malvaniSundayMasala from '../assets/images/Masale/malvani spl Sunday masala.webp';
+import malvaniSundayMasala from '../assets/images/Masale/malvani spl Sunday masala.webP';
 import frymasala from '../assets/images/Masale/Malvani fish fry masala.webP';
 import Biryanimasala from '../assets/images/Masale/Biryani masala.webP';
 import Kashmirimirchi from '../assets/images/Masale/Kashmiri mirchi powder.webP';
