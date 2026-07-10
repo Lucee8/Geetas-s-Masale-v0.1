@@ -11,6 +11,7 @@ import Kashmirimirchi from '../assets/images/Masale/Kashmiri mirchi powder.webP'
 import specialbhajka from '../assets/images/Masale/Malvani special bhajka masala.webP';
 import muttonmasala from '../assets/images/Masale/malvani special mutton masala.webP';
 import currymasala from '../assets/images/Masale/malvani fish curry masala.webP';
+import KhobraLasunChutney from '../assets/images/Masale/Khobra Lasun Chutney.webP';
 import kandaLasunMasala from '../assets/images/Masale/Kanda lasun masala.webP';
 import specialmisal from '../assets/images/Masale/special misal masala.webP';
 import shengdanachutney from '../assets/images/Masale/shengdana chutney.webP';
@@ -56,35 +57,35 @@ export const CATEGORIES = [
     id: 'Masale',
     name: 'Malvani Masalas & Chutneys',
     description: 'Generations of expertise in roasting and blending coastal spices, red chillies, and garlic.',
-    image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&auto=format&fit=crop&q=80',
+    image: 'https://cdn.shopify.com/s/files/1/1012/9358/files/ingredients_large.jpeg?v=1589554083',
     count: 11
   },
   {
     id: 'Pith',
     name: 'Traditional Flours (Pith)',
     description: 'Freshly milled rice, pulse, and grain flours prepared for authentic Bhakri, Vade, and Modak.',
-    image: 'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?w=600&auto=format&fit=crop&q=80',
+    image: 'https://dukaan.b-cdn.net/700x700/webp/upload_file_service/dadb149d-dd4a-431f-bed8-2bdf08c75309/organic-whole-wheat-flour-hfi-3648x.webp',
     count: 7
   },
   {
     id: 'Malvani products',
     name: 'Konkan Specialties & Meva',
     description: 'Sun-dried Kokum, parboiled rice, fruit leathers (Poli), and authentic farm-fresh items.',
-    image: 'https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=600&auto=format&fit=crop&q=80',
+    image: 'src/assets/images/meva.png',
     count: 11
   },
   {
     id: 'Laddoos',
     name: 'Handmade Laddoos',
     description: 'Sweet, nutritious daily delicacies rolled with pure ghee, organic jaggery, peanuts, and dry fruits.',
-    image: 'https://images.unsplash.com/photo-1581781868311-6415779c13dd?w=600&auto=format&fit=crop&q=80',
+    image: 'https://www.nuskhakitchen.com/public/img/uploads/products/11641762501877.jpeg',
     count: 4
   },
   {
     id: 'Kaju',
     name: 'Premium Malvan Cashews (Kaju)',
     description: 'Export-grade whole cashews, salted variants, masala-flavored crunch, and healthy split kernels.',
-    image: cashewPremiumImage,
+    image: 'https://narayanjigajakwale.in/cdn/shop/files/Cashwe-180-No.jpg?v=1727454538',
     count: 7
   }
 ];
@@ -200,7 +201,7 @@ export const PRODUCTS: Product[] = [
     usage: 'Ready to consume. Best enjoyed alongside freshly made hot Bajra/Jowar Bhakris, Vada Pav, or simply mixed with oil over warm rice.',
     shelfLife: '6 Months',
     notes: 'No preservatives, very low moisture content for enduring crunch.',
-    image: kandaLasunMasala
+    image: KhobraLasunChutney
   },
   {
     id: 'm9',
