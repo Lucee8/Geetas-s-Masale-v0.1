@@ -6,7 +6,7 @@
 import React from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { Anchor, Compass, Heart } from 'lucide-react';
-import konkanCoastImage from '../assets/images/konkan_coast_1780594634904.png';
+import konkanCoastImage from '../assets/images/categories/Malvani Masalas & Chutneys.webP';
 
 export default function Heritage() {
   const containerRef = React.useRef(null);

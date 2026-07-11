@@ -46,46 +46,46 @@ import Tukdakaju from '../assets/images/Kaju/Tukda kaju.webP';
 import polishkaju4 from '../assets/images/Kaju/polish kaju 4 (medium size).webP';
 
 // Static assets for categories, gallery, and recipes to ensure Vite bundles them successfully in production
-import cookingImage from '../assets/images/malvani_cooking_1780594653286.png';
-import storefrontImage from '../assets/images/geetas_storefront_1780594715235.png';
-import interiorImage from '../assets/images/geetas_interior_1780594732720.png';
-import masalaHeroImage from '../assets/images/masala_hero_1780594616996.png';
-import cashewPremiumImage from '../assets/images/cashew_premium_1780594672474.png';
+import masalaHeroImage from '../assets/images/categories/Malvani Masalas & Chutneys.webP';
+import TraditionalFlours from '../assets/images/categories/Traditional Flours.webP';
+import mevaImage from '../assets/images/categories/meva.png';
+import HandmadeLaddoos from '../assets/images/categories/Handmade Laddoos.webP';
+import cashewPremiumImage from '../assets/images/categories/Cashews.webP';
 
 export const CATEGORIES = [
   {
     id: 'Masale',
     name: 'Malvani Masalas & Chutneys',
     description: 'Generations of expertise in roasting and blending coastal spices, red chillies, and garlic.',
-    image: 'https://cdn.shopify.com/s/files/1/1012/9358/files/ingredients_large.jpeg?v=1589554083',
+    image: masalaHeroImage,
     count: 11
   },
   {
     id: 'Pith',
     name: 'Traditional Flours (Pith)',
     description: 'Freshly milled rice, pulse, and grain flours prepared for authentic Bhakri, Vade, and Modak.',
-    image: 'https://dukaan.b-cdn.net/700x700/webp/upload_file_service/dadb149d-dd4a-431f-bed8-2bdf08c75309/organic-whole-wheat-flour-hfi-3648x.webp',
+    image: TraditionalFlours,
     count: 7
   },
   {
     id: 'Malvani products',
     name: 'Konkan Specialties & Meva',
     description: 'Sun-dried Kokum, parboiled rice, fruit leathers (Poli), and authentic farm-fresh items.',
-    image: 'src/assets/images/meva.png',
+    image: mevaImage,
     count: 11
   },
   {
     id: 'Laddoos',
     name: 'Handmade Laddoos',
     description: 'Sweet, nutritious daily delicacies rolled with pure ghee, organic jaggery, peanuts, and dry fruits.',
-    image: 'https://www.nuskhakitchen.com/public/img/uploads/products/11641762501877.jpeg',
+    image: HandmadeLaddoos,
     count: 4
   },
   {
     id: 'Kaju',
     name: 'Premium Malvan Cashews (Kaju)',
     description: 'Export-grade whole cashews, salted variants, masala-flavored crunch, and healthy split kernels.',
-    image: 'https://narayanjigajakwale.in/cdn/shop/files/Cashwe-180-No.jpg?v=1727454538',
+    image: cashewPremiumImage,
     count: 7
   }
 ];
@@ -676,7 +676,7 @@ export const RECIPES: Recipe[] = [
       'Shallow fry the fish for 6-7 minutes on each side until the outer skin turns deep dark golden-brown and crispy.',
       'Drain on clean plates and serve screaming hot garnished with onions and lemon slices.'
     ],
-    image: cookingImage
+    image: masalaHeroImage
   },
   {
     id: 'r2',
@@ -707,7 +707,7 @@ export const RECIPES: Recipe[] = [
       'Meanwhile, knead Geetas Vade Pith with warm water, shape small rounds over damp wrap, deep-fry in smoking oil until fully puffed and golden.',
       'Serve chicken rassa in deep brass bowls alongside steaming hot puffed Kombdi Vade.'
     ],
-    image: cookingImage
+    image: masalaHeroImage
   },
   {
     id: 'r3',
@@ -780,13 +780,13 @@ export const GALLERY_PHOTOS: GalleryItem[] = [
     id: 'g1',
     title: 'Geeta’s Masale Kasal Storefront',
     category: 'Store',
-    image: storefrontImage
+    image: mevaImage
   },
   {
     id: 'g2',
     title: 'Boutique Shelves Filled with Spices',
     category: 'Interior',
-    image: interiorImage
+    image: mevaImage
   },
   {
     id: 'g3',
@@ -810,6 +810,6 @@ export const GALLERY_PHOTOS: GalleryItem[] = [
     id: 'g6',
     title: 'Freshly Steamed Malvani Chicken & Vatan',
     category: 'Cooking',
-    image: cookingImage
+    image: mevaImage
   }
 ];
