@@ -38,24 +38,30 @@ export default function App() {
   // Full-stack dynamic data lists
   const [productsList, setProductsList] = useState<Product[]>([]);
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
+  const checkIsAdmin = () => {
+    if (typeof window === 'undefined') return false;
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+    const hash = window.location.hash.toLowerCase().replace(/\/$/, '');
+    return path === '/admin' || hash === '#/admin' || hash === '#admin';
+  };
+
   const [adminOpen, setAdminOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.location.pathname === '/admin' || 
-             window.location.hash === '#/admin' || 
-             window.location.hash === '#admin';
-    }
-    return false;
+    const isAdmin = checkIsAdmin();
+    console.log('[Routing] Initial adminOpen:', isAdmin, 'Path:', typeof window !== 'undefined' ? window.location.pathname : 'N/A');
+    return isAdmin;
   });
   const [loading, setLoading] = useState(true);
 
   // Simple custom router for separate links
   useEffect(() => {
     const handleLocationChange = () => {
-      const isAdmin = window.location.pathname === '/admin' || 
-                      window.location.hash === '#/admin' || 
-                      window.location.hash === '#admin';
+      const isAdmin = checkIsAdmin();
+      console.log('[Routing] handleLocationChange adminOpen:', isAdmin, 'Path:', window.location.pathname, 'Hash:', window.location.hash);
       setAdminOpen(isAdmin);
     };
+
+    // Run once on mount to align state
+    handleLocationChange();
 
     window.addEventListener('popstate', handleLocationChange);
     window.addEventListener('hashchange', handleLocationChange);
@@ -66,13 +72,16 @@ export default function App() {
   }, []);
 
   const handleOpenAdmin = () => {
+    console.log('[Routing] Opening admin panel...');
     window.history.pushState(null, '', '/admin');
     setAdminOpen(true);
   };
 
   const handleCloseAdmin = () => {
+    console.log('[Routing] Closing admin panel...');
     window.history.pushState(null, '', '/');
     setAdminOpen(false);
+    setMyAccountOpen(false); // prevent fall-through to customer account portal
   };
 
   const fetchStoreData = async () => {

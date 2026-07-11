@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ShoppingBag, MessageSquare, BookOpen, Clock, Layers, Sparkles, Filter, X, ArrowUpDown, ChevronRight } from 'lucide-react';
 import { Product } from '../types';
-import { PRODUCTS, resolveProductImage } from '../data/storeData.ts';
+import { PRODUCTS, resolveProductImage } from '../data/storeData';
 
 interface ProductSectionProps {
   searchQuery: string;
@@ -56,7 +56,7 @@ export default function ProductSection({
     // Category filter
     if (selectedCategory && selectedCategory !== 'all') {
       result = result.filter(
-        (p) => p.category.toLowerCase() === selectedCategory.toLowerCase()
+        (p) => (p.category || '').toLowerCase() === selectedCategory.toLowerCase()
       );
     }
 
@@ -65,10 +65,10 @@ export default function ProductSection({
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.ingredients.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
+          (p.name || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q) ||
+          (p.ingredients || '').toLowerCase().includes(q) ||
+          (p.category || '').toLowerCase().includes(q)
       );
     }
 
