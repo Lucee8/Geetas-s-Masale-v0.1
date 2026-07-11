@@ -33,7 +33,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { useUser, SavedAddress, Order, Review } from '../context/UserContext';
-import { PRODUCTS } from '../data/storeData';
+import { PRODUCTS, resolveProductImage } from '../data/storeData.ts';
 import { Product } from '../types';
 
 interface MyAccountDashboardProps {
@@ -563,7 +563,7 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                         return (
                           <div key={prodId} className="border border-slate-100 rounded-xl p-2.5 text-center flex flex-col justify-between">
                             <img 
-                              src={prod.image} 
+                              src={resolveProductImage(prod)} 
                               alt={prod.name} 
                               className="w-14 h-14 object-contain mx-auto rounded-lg mb-2"
                               referrerPolicy="no-referrer"
@@ -762,7 +762,7 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                         >
                           <div className="relative">
                             <img 
-                              src={prod.image} 
+                              src={resolveProductImage(prod)} 
                               alt={prod.name} 
                               className="w-24 h-24 object-contain mx-auto rounded-xl mb-3"
                               referrerPolicy="no-referrer"

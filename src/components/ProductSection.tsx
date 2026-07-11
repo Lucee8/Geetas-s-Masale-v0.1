@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, ShoppingBag, MessageSquare, BookOpen, Clock, Layers, Sparkles, Filter, X, ArrowUpDown, ChevronRight } from 'lucide-react';
 import { Product } from '../types';
-import { PRODUCTS } from '../data/storeData';
+import { PRODUCTS, resolveProductImage } from '../data/storeData.ts';
 
 interface ProductSectionProps {
   searchQuery: string;
@@ -173,7 +173,7 @@ Please confirm availability and sharing banking details for packing. Thanks!`;
                   {/* Photo container with zoom and badge */}
                   <div className="relative h-48 sm:h-68 bg-white overflow-hidden shrink-0 p-3 sm:p-4 flex items-center justify-center">
                     <img
-                      src={p.image}
+                      src={resolveProductImage(p)}
                       alt={p.name}
                       onClick={() => handleOpenModal(p)}
                       className="w-full h-full object-contain group-hover:scale-105 duration-700 ease-out cursor-pointer"
@@ -288,7 +288,7 @@ Please confirm availability and sharing banking details for packing. Thanks!`;
               {/* Left Column: Photo Presentation */}
               <div className="w-full md:w-1/2 shrink-0 md:shrink relative bg-white h-48 sm:h-60 md:h-auto md:min-h-[480px] p-4 md:p-6 flex flex-col justify-center items-center border-b md:border-b-0 md:border-r border-gray-150">
                 <img
-                  src={selectedProduct.image}
+                  src={resolveProductImage(selectedProduct)}
                   alt={selectedProduct.name}
                   className="w-full h-full max-h-[120px] sm:max-h-[180px] md:max-h-[380px] object-contain drop-shadow-md rounded-lg"
                   referrerPolicy="no-referrer"

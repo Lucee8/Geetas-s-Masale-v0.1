@@ -813,3 +813,16 @@ export const GALLERY_PHOTOS: GalleryItem[] = [
     image: mevaImage
   }
 ];
+
+export function resolveProductImage(p: Product | null | undefined): string {
+  if (!p) return '';
+  
+  // 1. If it's a known product ID, look it up in our static local map to get the correct compiled/imported asset
+  const localProduct = PRODUCTS.find(item => item.id === p.id);
+  if (localProduct && localProduct.image) {
+    return localProduct.image;
+  }
+  
+  // 2. Fallback to the image property (e.g. if custom created product from admin dashboard)
+  return p.image || '';
+}
