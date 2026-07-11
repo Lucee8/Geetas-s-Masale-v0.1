@@ -1057,40 +1057,7 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
             </button>
           </form>
 
-          <div className="mt-5 border-t border-slate-100 pt-4 flex flex-col items-center space-y-1">
-            <span className="text-[9px] font-mono text-slate-400 uppercase">
-              Demo bypass credentials:
-            </span>
-            <span className="text-[10px] font-mono font-bold text-slate-600">
-              Username: <span className="text-[#A61B1B]">admin</span> & Password: <span className="text-[#A61B1B]">geeta2004</span>
-            </span>
-          </div>
 
-          {isFirebaseConfigured && (
-            <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left">
-              <h4 className="text-[11px] font-mono font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
-                🛠️ Firebase Connection Guide
-              </h4>
-              <ul className="space-y-2 text-[10px] text-slate-600 leading-normal list-disc pl-3">
-                <li>
-                  <strong className="text-[#A61B1B]">Authentication:</strong> Please go to your <a href={`https://console.firebase.google.com/project/${(window as any).__FIREBASE_CONFIG__?.projectId || 'your-project'}/authentication/providers`} target="_blank" rel="noopener noreferrer" className="underline font-bold text-blue-600">{"Firebase Console -> Authentication -> Sign-in Method"}</a>, and enable <strong className="text-slate-800">Email/Password</strong> provider. Our app will then automatically register the default admin account on your first login attempt!
-                </li>
-                <li>
-                  <strong className="text-[#A61B1B]">Database Rules:</strong> If you see "Missing or insufficient permissions", please go to your <a href={`https://console.firebase.google.com/project/${(window as any).__FIREBASE_CONFIG__?.projectId || 'your-project'}/firestore/rules`} target="_blank" rel="noopener noreferrer" className="underline font-bold text-blue-600">{"Firebase Console -> Firestore Database -> Rules"}</a>, and update them to:
-                  <pre className="mt-1.5 p-1.5 bg-slate-100 rounded text-[9px] font-mono leading-tight whitespace-pre-wrap overflow-x-auto text-slate-700">
-{`rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}`}
-                  </pre>
-                </li>
-              </ul>
-            </div>
-          )}
         </motion.div>
       </div>
     );
