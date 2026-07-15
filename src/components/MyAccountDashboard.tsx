@@ -93,6 +93,37 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
   // Detailed selected order
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
+  const getFormattedOrderId = (o: any) => {
+    if (!o || !o.id) return 'ORD-UNKNOWN';
+    const d = new Date(o.createdAt || Date.now());
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    const targetDateStr = `${day}-${month}-${year}`;
+
+    // Filter all orders created on the same day
+    const sameDayOrders = orders
+      .filter(x => {
+        if (!x.createdAt) return false;
+        const xd = new Date(x.createdAt);
+        const xday = String(xd.getDate()).padStart(2, '0');
+        const xmonth = String(xd.getMonth() + 1).padStart(2, '0');
+        const xyear = String(xd.getFullYear()).slice(-2);
+        return `${xday}-${xmonth}-${xyear}` === targetDateStr;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.id || '').localeCompare(b.id || '');
+      });
+
+    const index = sameDayOrders.findIndex(x => x.id === o.id);
+    const sequenceNum = index !== -1 ? index + 1 : 1;
+    const suffix = String(sequenceNum).padStart(3, '0');
+    return `ORD-${targetDateStr}-${suffix}`;
+  };
+
   // Load profile values on active profile tab
   useEffect(() => {
     if (profile) {
@@ -499,7 +530,7 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                           className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all"
                         >
                           <div>
-                            <span className="text-xs font-bold text-slate-900 block">Order #{order.id.slice(-6).toUpperCase()}</span>
+                            <span className="text-xs font-bold text-slate-900 block">Order {getFormattedOrderId(order)}</span>
                             <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
                               {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                             </span>
@@ -601,7 +632,7 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                             {orders.map((order) => (
                               <tr key={order.id} className="hover:bg-slate-50/50">
                                 <td className="py-4 font-bold text-slate-900">
-                                  #{order.id.slice(-6).toUpperCase()}
+                                  {getFormattedOrderId(order)}
                                 </td>
                                 <td className="py-4 text-slate-500">
                                   {new Date(order.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
@@ -649,7 +680,7 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                         </button>
                         <div>
                           <span className="text-xs text-slate-400 block font-mono font-bold">ORDER DETAIL</span>
-                          <h4 className="text-sm font-bold text-slate-900">Order #{selectedOrder.id.slice(-6).toUpperCase()}</h4>
+                          <h4 className="text-sm font-bold text-slate-900">Order {getFormattedOrderId(selectedOrder)}</h4>
                         </div>
                       </div>
                       <span className={`text-[10px] font-bold tracking-wide uppercase px-2.5 py-1 rounded-full ${

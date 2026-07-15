@@ -60,6 +60,37 @@
     const [settings, setSettings] = useState<any>(null);
     const [coupons, setCoupons] = useState<any[]>([]);
     
+    const getFormattedOrderId = (o: any) => {
+      if (!o || !o.id) return 'ORD-UNKNOWN';
+      const d = new Date(o.createdAt || Date.now());
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = String(d.getFullYear()).slice(-2);
+      const targetDateStr = `${day}-${month}-${year}`;
+
+      // Filter all orders created on the same day
+      const sameDayOrders = orders
+        .filter(x => {
+          if (!x.createdAt) return false;
+          const xd = new Date(x.createdAt);
+          const xday = String(xd.getDate()).padStart(2, '0');
+          const xmonth = String(xd.getMonth() + 1).padStart(2, '0');
+          const xyear = String(xd.getFullYear()).slice(-2);
+          return `${xday}-${xmonth}-${xyear}` === targetDateStr;
+        })
+        .sort((a, b) => {
+          const timeA = new Date(a.createdAt || 0).getTime();
+          const timeB = new Date(b.createdAt || 0).getTime();
+          if (timeA !== timeB) return timeA - timeB;
+          return (a.id || '').localeCompare(b.id || '');
+        });
+
+      const index = sameDayOrders.findIndex(x => x.id === o.id);
+      const sequenceNum = index !== -1 ? index + 1 : 1;
+      const suffix = String(sequenceNum).padStart(3, '0');
+      return `ORD-${targetDateStr}-${suffix}`;
+    };
+    
     // Loading & Action queues
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -2130,28 +2161,7 @@
 
                                 return pageItems.map((o) => {
                                   // Formatting helper functions
-                                  const formattedId = (() => {
-                                    if (!o.id) return 'ORD-00_00_00-000';
-                                    const d = new Date(o.createdAt || Date.now());
-                                    const day = String(d.getDate()).padStart(2, '0');
-                                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                                    const year = String(d.getFullYear()).slice(-2);
-                                    
-                                    const cleanId = o.id.replace('order_', '').replace('GMA-', '');
-                                    const digitsOnly = cleanId.replace(/\D/g, '');
-                                    let suffix = '';
-                                    if (digitsOnly.length >= 3) {
-                                      suffix = digitsOnly.slice(-3);
-                                    } else {
-                                      const alphaNum = cleanId.replace(/[^a-zA-Z0-9]/g, '');
-                                      if (alphaNum.length >= 3) {
-                                        suffix = alphaNum.slice(-3);
-                                      } else {
-                                        suffix = cleanId.slice(-3).padStart(3, '0');
-                                      }
-                                    }
-                                    return `ORD-${day}_${month}_${year}-${suffix.toUpperCase()}`;
-                                  })();
+                                  const formattedId = getFormattedOrderId(o);
 
                                   const formattedDate = (() => {
                                     try {
@@ -3585,7 +3595,7 @@
                       Order Invoice Details
                     </h3>
                     <p className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-wider mt-0.5">
-                      {selectedOrderDetails.id}
+                      {getFormattedOrderId(selectedOrderDetails)}
                     </p>
                   </div>
                 </div>
@@ -3747,28 +3757,7 @@
                     <span className="text-xs font-mono font-black uppercase text-slate-400">Order ID & details</span>
                   </div>
                   <h3 className="text-lg font-sans font-black text-[#A61B1B] mt-0.5">
-                    {(() => {
-                      const o = selectedOrderForDrawer;
-                      if (!o.id) return 'ORD-UNKNOWN';
-                      const d = new Date(o.createdAt || Date.now());
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const year = String(d.getFullYear()).slice(-2);
-                      const cleanId = o.id.replace('order_', '').replace('GMA-', '');
-                      const digitsOnly = cleanId.replace(/\D/g, '');
-                      let suffix = '';
-                      if (digitsOnly.length >= 3) {
-                        suffix = digitsOnly.slice(-3);
-                      } else {
-                        const alphaNum = cleanId.replace(/[^a-zA-Z0-9]/g, '');
-                        if (alphaNum.length >= 3) {
-                          suffix = alphaNum.slice(-3);
-                        } else {
-                          suffix = cleanId.slice(-3).padStart(3, '0');
-                        }
-                      }
-                      return `ORD-${day}_${month}_${year}-${suffix.toUpperCase()}`;
-                    })()}
+                    {getFormattedOrderId(selectedOrderForDrawer)}
                   </h3>
                 </div>
                 <button

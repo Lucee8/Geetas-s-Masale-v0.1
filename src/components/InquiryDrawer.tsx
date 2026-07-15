@@ -47,11 +47,53 @@ export default function InquiryDrawer({
   onUpdateQuantity,
   onClearCart,
 }: InquiryDrawerProps) {
-  const { profile, placeOrder } = useUser();
+  const { profile, placeOrder, orders = [] } = useUser();
   const [step, setStep] = useState<'bag' | 'address' | 'summary' | 'pay'>('bag');
   const [confirmedOrder, setConfirmedOrder] = useState<any | null>(null);
   const [checkoutTotal, setCheckoutTotal] = useState<number>(0);
   const [isConfirming, setIsConfirming] = useState(false);
+
+  const getFormattedOrderId = (o: any) => {
+    if (!o || !o.id) return 'ORD-UNKNOWN';
+    const d = new Date(o.createdAt || Date.now());
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = String(d.getFullYear()).slice(-2);
+    const targetDateStr = `${day}-${month}-${year}`;
+
+    // Filter all orders created on the same day
+    const sameDayOrders = orders
+      .filter(x => {
+        if (!x.createdAt) return false;
+        const xd = new Date(x.createdAt);
+        const xday = String(xd.getDate()).padStart(2, '0');
+        const xmonth = String(xd.getMonth() + 1).padStart(2, '0');
+        const xyear = String(xd.getFullYear()).slice(-2);
+        return `${xday}-${xmonth}-${xyear}` === targetDateStr;
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.id || '').localeCompare(b.id || '');
+      });
+
+    // We also include the current order if it's not yet in the orders list
+    if (o.id && !sameDayOrders.some(x => x.id === o.id)) {
+      sameDayOrders.push(o);
+      sameDayOrders.sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        if (timeA !== timeB) return timeA - timeB;
+        return (a.id || '').localeCompare(b.id || '');
+      });
+    }
+
+    const index = sameDayOrders.findIndex(x => x.id === o.id);
+    const sequenceNum = index !== -1 ? index + 1 : 1;
+    const suffix = String(sequenceNum).padStart(3, '0');
+    return `ORD-${targetDateStr}-${suffix}`;
+  };
   
   // Customer info states initialized from LocalStorage for seamless sessions
   const [fullName, setFullName] = useState(() => localStorage.getItem('gm_fullName') || '');
@@ -272,7 +314,7 @@ export default function InquiryDrawer({
 
     let text = `Hello Geeta's Masale! I have confirmed my order on the app.\n\n`;
 
-    text += `*📌 ORDER ID:* ${confirmedOrder.id}\n`;
+    text += `*📌 ORDER ID:* ${getFormattedOrderId(confirmedOrder)}\n`;
     text += `*📍 DELIVER TO:* \n`;
     text += `• *Name:* ${confirmedOrder.name || fullName}\n`;
     text += `• *Address:* ${confirmedOrder.address || `${streetAddress}${landmark ? ` (Landmark: ${landmark})` : ''}, ${cityStatePincode}`}\n`;
