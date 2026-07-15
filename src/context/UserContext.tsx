@@ -651,7 +651,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   // Orders
   const placeOrder = async (orderData: Omit<Order, 'id' | 'userId' | 'createdAt' | 'status'>) => {
-    const activeUid = user?.uid || 'demo_customer';
+    const activeUid = user?.uid || 'guest_' + Date.now();
     const orderId = `order_${Date.now()}`;
     
     const newOrder: Order = {
@@ -663,28 +663,38 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date().toISOString()
     };
 
-    if (db && user) {
+    if (isFirebaseConfigured && db) {
       await setDoc(doc(db, 'orders', orderId), newOrder);
       
       // Update coupons used & Loyalty points in User profile
-      const couponsUsed = profile?.couponsUsed || [];
-      if (orderData.couponCode && !couponsUsed.includes(orderData.couponCode)) {
-        couponsUsed.push(orderData.couponCode);
+      if (user && profile) {
+        const couponsUsed = profile?.couponsUsed || [];
+        if (orderData.couponCode && !couponsUsed.includes(orderData.couponCode)) {
+          couponsUsed.push(orderData.couponCode);
+        }
+        
+        const loyaltyEarned = Math.round(orderData.total * 0.1); // 10% cash back in loyalty points!
+        const currentPoints = profile?.rewardPoints || 0;
+        const pointsDeducted = orderData.pointsRedeemed || 0;
+        const finalPoints = Math.max(0, currentPoints - pointsDeducted + loyaltyEarned);
+
+        await updateUserProfile({
+          couponsUsed,
+          rewardPoints: finalPoints,
+          cart: [] // clear server cart
+        });
+
+        // Refetch orders list
+        await fetchUserOrdersInternal(user.uid);
+      } else {
+        // Guest user local orders storage
+        try {
+          const guestOrders = JSON.parse(localStorage.getItem('gm_guest_orders') || '[]');
+          localStorage.setItem('gm_guest_orders', JSON.stringify([newOrder, ...guestOrders]));
+        } catch (e) {
+          console.error("Failed to save guest order to localStorage:", e);
+        }
       }
-      
-      const loyaltyEarned = Math.round(orderData.total * 0.1); // 10% cash back in loyalty points!
-      const currentPoints = profile?.rewardPoints || 0;
-      const pointsDeducted = orderData.pointsRedeemed || 0;
-      const finalPoints = Math.max(0, currentPoints - pointsDeducted + loyaltyEarned);
-
-      await updateUserProfile({
-        couponsUsed,
-        rewardPoints: finalPoints,
-        cart: [] // clear server cart
-      });
-
-      // Refetch orders list
-      await fetchUserOrdersInternal(user.uid);
     } else {
       // Demo Mode
       setOrders(prev => [newOrder, ...prev]);
@@ -699,6 +709,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           rewardPoints: finalPoints,
           cart: []
         } : null);
+      } else {
+        try {
+          const guestOrders = JSON.parse(localStorage.getItem('gm_guest_orders') || '[]');
+          localStorage.setItem('gm_guest_orders', JSON.stringify([newOrder, ...guestOrders]));
+        } catch (e) {
+          console.error("Failed to save guest order to localStorage:", e);
+        }
       }
     }
 

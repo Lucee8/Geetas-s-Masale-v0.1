@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Sparkles, X, LogIn } from 'lucide-react';
 import FloatingSpices from './components/FloatingSpices';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -32,8 +33,19 @@ export default function App() {
   const [myAccountOpen, setMyAccountOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [inquiryBag, setInquiryBag] = useState<{ product: Product; quantity: number }[]>([]);
+  const [inquiryBag, setInquiryBag] = useState<{ product: Product; quantity: number }[]>(() => {
+    try {
+      const stored = localStorage.getItem('gm_guest_cart');
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Failed to load initial cart from localStorage:', e);
+    }
+    return [];
+  });
   const [inquiryDrawerOpen, setInquiryDrawerOpen] = useState(false);
+  const [showGoogleSuggestion, setShowGoogleSuggestion] = useState(false);
 
   // Full-stack dynamic data lists
   const [productsList, setProductsList] = useState<Product[]>([]);
@@ -195,12 +207,30 @@ export default function App() {
     }
   }, [user, profile?.cart, productsList]);
 
-  // Push local cart mutations to cloud Firestore securely
+  // Push local cart mutations to cloud Firestore securely OR save to localStorage for guests
   useEffect(() => {
     if (user && profile) {
       syncCartToFirestore(inquiryBag);
+    } else {
+      try {
+        localStorage.setItem('gm_guest_cart', JSON.stringify(inquiryBag));
+      } catch (e) {
+        console.error('Failed to save guest cart to localStorage:', e);
+      }
     }
   }, [inquiryBag, user]);
+
+  // Google Sign-In Recommendation banner trigger on load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const dismissed = sessionStorage.getItem('gm_suggestion_dismissed');
+      if (!user && !dismissed) {
+        setShowGoogleSuggestion(true);
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [user]);
 
   // Smooth scroll helper
   const handleScrollToSection = (sectionId: string) => {
@@ -348,6 +378,70 @@ export default function App() {
           setMyAccountOpen(true);
         }}
       />
+
+      {/* Google Sign-in Suggestion Toast */}
+      <AnimatePresence>
+        {showGoogleSuggestion && !user && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-white rounded-2xl shadow-[0_20px_50px_rgba(166,27,27,0.15)] border border-[#A61B1B]/10 p-5 flex flex-col space-y-3.5"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center text-[#A61B1B] shrink-0">
+                  <Sparkles className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-sans font-bold text-slate-900 leading-snug">
+                    Namaste! Unlock Rewards
+                  </h4>
+                  <p className="text-slate-500 text-[11px] mt-0.5 leading-relaxed">
+                    Sign in with your Google account to get <span className="font-semibold text-amber-600">50 welcome points</span> & track orders!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowGoogleSuggestion(false);
+                  sessionStorage.setItem('gm_suggestion_dismissed', 'true');
+                }}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-50 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1.5">
+              <button
+                onClick={async () => {
+                  try {
+                    setShowGoogleSuggestion(false);
+                    setAuthModalOpen(true);
+                  } catch (e) {
+                    console.error("Google Sign-in failed:", e);
+                  }
+                }}
+                className="flex-1 bg-[#A61B1B] hover:bg-[#8A1414] text-white py-2 px-3 rounded-xl text-xs font-bold tracking-wider uppercase transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>Sign In Now</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowGoogleSuggestion(false);
+                  sessionStorage.setItem('gm_suggestion_dismissed', 'true');
+                }}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </motion.div>
   );
