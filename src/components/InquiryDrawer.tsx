@@ -50,6 +50,7 @@ export default function InquiryDrawer({
   const { profile, placeOrder } = useUser();
   const [step, setStep] = useState<'bag' | 'address' | 'summary' | 'pay'>('bag');
   const [confirmedOrder, setConfirmedOrder] = useState<any | null>(null);
+  const [checkoutTotal, setCheckoutTotal] = useState<number>(0);
   const [isConfirming, setIsConfirming] = useState(false);
   
   // Customer info states initialized from LocalStorage for seamless sessions
@@ -170,6 +171,7 @@ export default function InquiryDrawer({
       setAppliedCoupon(null);
       setCouponError('');
       setConfirmedOrder(null);
+      setCheckoutTotal(0);
     }
   }, [isOpen]);
 
@@ -183,8 +185,8 @@ export default function InquiryDrawer({
   const totalPricing = inquiryList.reduce((acc, item) => acc + item.product.mrp * item.quantity, 0);
   const deliveryFee = totalPricing > 499 ? 0 : 40;
 
-  // Coupon vs heritage standard offer application
-  const discountPct = appliedCoupon ? Number(appliedCoupon.discount) / 100 : 0.10; // 10% authentic Konkan Heritage discount by default
+  // Coupon standard offer application
+  const discountPct = appliedCoupon ? Number(appliedCoupon.discount) / 100 : 0;
   const maxDiscAmount = appliedCoupon?.maxDiscount ? Number(appliedCoupon.maxDiscount) : 99999;
   const discountAmount = Math.min(Math.round(totalPricing * discountPct), maxDiscAmount);
 
@@ -193,9 +195,19 @@ export default function InquiryDrawer({
   const maxPointsDiscount = 0;
   const pointsDiscount = 0;
 
+  // Keep checkoutTotal updated with the actual calculated bill
+  useEffect(() => {
+    if (inquiryList.length > 0) {
+      const bill = Math.max(0, totalPricing + deliveryFee - discountAmount - pointsDiscount);
+      setCheckoutTotal(bill);
+    }
+  }, [inquiryList, totalPricing, deliveryFee, discountAmount, pointsDiscount]);
+
   const finalTotalBill = confirmedOrder 
-    ? confirmedOrder.total 
-    : Math.max(0, totalPricing + deliveryFee - discountAmount - pointsDiscount);
+    ? (confirmedOrder.total || checkoutTotal) 
+    : (inquiryList.length > 0 
+        ? Math.max(0, totalPricing + deliveryFee - discountAmount - pointsDiscount) 
+        : checkoutTotal);
 
   // Safely calculate pay amount based on selected mode
   const payAmount = amountMode === 'full'
@@ -309,7 +321,9 @@ export default function InquiryDrawer({
     text += `*💰 BILLING SUMMARY:* \n`;
     text += `• Subtotal MRP: Rs. ${totalPricing}\n`;
     text += `• Courier & Packing: Rs. ${deliveryFee === 0 ? 'FREE' : deliveryFee}\n`;
-    text += `• Heritage Discount (10%): Rs. ${discountAmount}\n`;
+    if (discountAmount > 0) {
+      text += `• Discount${appliedCoupon ? ` (${appliedCoupon.code})` : ''}: Rs. ${discountAmount}\n`;
+    }
     text += `• *Net Total Bill*: *Rs. ${finalTotalBill}*\n\n`;
     text += `Please verify availability and dispatch courier packing details. Thank you!`;
 
@@ -354,7 +368,9 @@ export default function InquiryDrawer({
     text += `\n*💰 BILL SUMMARY*:\n`;
     text += `• Total MRP: Rs. ${savedTotalPricing}\n`;
     text += `• Courier Shipping: Rs. ${savedDeliveryFee === 0 ? 'FREE' : savedDeliveryFee}\n`;
-    text += `• Heritage Discount (10%): -Rs. ${savedDiscountAmount}\n`;
+    if (savedDiscountAmount > 0) {
+      text += `• Discount: -Rs. ${savedDiscountAmount}\n`;
+    }
     text += `• *Net Final Bill*: *Rs. ${finalTotalBill}*\n`;
     text += `• *Direct UPI Paid/Initiated*: *Rs. ${payAmount}*\n`;
     
@@ -840,19 +856,23 @@ export default function InquiryDrawer({
                         )}
                       </div>
 
-                      <div className="flex justify-between items-center text-xs text-slate-600">
-                        <span>Heritage Discount (10% Off)</span>
-                        <span className="font-bold text-emerald-600 font-mono">-₹{discountAmount}</span>
-                      </div>
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between items-center text-xs text-slate-600">
+                          <span>Coupon Discount ({appliedCoupon?.discount || 0}% Off)</span>
+                          <span className="font-bold text-emerald-600 font-mono">-₹{discountAmount}</span>
+                        </div>
+                      )}
 
                       <div className="flex justify-between items-center text-sm text-slate-900 border-t border-slate-100 pt-2.5 font-sans font-black uppercase">
                         <span>Total Payable Amount</span>
                         <span className="text-lg text-[#A61B1B] font-mono">₹{finalTotalBill}</span>
                       </div>
 
-                      <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 text-center text-[10px] font-sans font-bold text-emerald-700 uppercase tracking-wide">
-                        🎉 You will save ₹{discountAmount} on this order!
-                      </div>
+                      {discountAmount > 0 && (
+                        <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 text-center text-[10px] font-sans font-bold text-emerald-700 uppercase tracking-wide">
+                          🎉 You will save ₹{discountAmount} on this order!
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

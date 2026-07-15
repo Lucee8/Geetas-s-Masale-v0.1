@@ -495,7 +495,7 @@ router.put('/admin/orders/:id/status', authenticateJWT, (req, res) => {
 });
 
 router.put('/admin/orders/:id/payment-status', authenticateJWT, (req, res) => {
-  const { paymentStatus } = req.body;
+  const { paymentStatus, paidAmount, pendingAmount } = req.body;
   if (!paymentStatus) return res.status(400).json({ error: 'paymentStatus is required' });
 
   const orders = getOrders();
@@ -503,8 +503,34 @@ router.put('/admin/orders/:id/payment-status', authenticateJWT, (req, res) => {
   if (orderIdx === -1) return res.status(404).json({ error: 'Order not found' });
 
   orders[orderIdx].paymentStatus = paymentStatus;
+  if (paidAmount !== undefined) orders[orderIdx].paidAmount = Number(paidAmount);
+  if (pendingAmount !== undefined) orders[orderIdx].pendingAmount = Number(pendingAmount);
+
   saveOrders(orders);
   res.json({ message: 'Payment status updated successfully', order: orders[orderIdx] });
+});
+
+router.put('/admin/orders/:id', authenticateJWT, (req, res) => {
+  const orders = getOrders();
+  const orderIdx = orders.findIndex(o => o.id === req.params.id);
+  if (orderIdx === -1) return res.status(404).json({ error: 'Order not found' });
+
+  const { customerName, customerPhone, customerAddress, customerEmail, items, amount, paidAmount, pendingAmount, status, paymentStatus, trackingNumber } = req.body;
+
+  if (customerName !== undefined) orders[orderIdx].customerName = customerName;
+  if (customerPhone !== undefined) orders[orderIdx].customerPhone = customerPhone;
+  if (customerAddress !== undefined) orders[orderIdx].customerAddress = customerAddress;
+  if (customerEmail !== undefined) orders[orderIdx].customerEmail = customerEmail;
+  if (items !== undefined) orders[orderIdx].items = items;
+  if (amount !== undefined) orders[orderIdx].amount = Number(amount);
+  if (paidAmount !== undefined) orders[orderIdx].paidAmount = Number(paidAmount);
+  if (pendingAmount !== undefined) orders[orderIdx].pendingAmount = Number(pendingAmount);
+  if (status !== undefined) orders[orderIdx].status = status;
+  if (paymentStatus !== undefined) orders[orderIdx].paymentStatus = paymentStatus;
+  if (trackingNumber !== undefined) orders[orderIdx].trackingNumber = trackingNumber;
+
+  saveOrders(orders);
+  res.json({ message: 'Order updated successfully', order: orders[orderIdx] });
 });
 
 router.put('/admin/orders/:id/tracking', authenticateJWT, (req, res) => {

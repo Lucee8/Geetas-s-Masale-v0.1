@@ -115,6 +115,8 @@
     const [rowsPerPage, setRowsPerPage] = useState(25);
     const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
     const [selectedOrderDetails, setSelectedOrderDetails] = useState<any | null>(null);
+    const [selectedOrderForDrawer, setSelectedOrderForDrawer] = useState<any | null>(null);
+    const [editingOrder, setEditingOrder] = useState<any | null>(null);
     const [custSearch, setCustSearch] = useState('');
 
     // Auto-fill ratePerKg when mrp changes
@@ -784,6 +786,104 @@
         }
       } catch (err) {
         alert('Error adding tracking information');
+      }
+    };
+
+    const handleOrderDelete = async (id: string) => {
+      if (!confirm('Are you absolutely sure you want to permanently delete this order?')) return;
+      try {
+        if (isFirebaseConfigured && db) {
+          await deleteDoc(doc(db, 'orders', id));
+          showToast('Order permanently deleted.');
+          loadDataForTab();
+          return;
+        }
+
+        const res = await fetch(`/api/admin/orders/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          showToast('Order permanently deleted.');
+          loadDataForTab();
+        } else {
+          alert('Failed to delete order.');
+        }
+      } catch (err) {
+        alert('Error deleting order: ' + err);
+      }
+    };
+
+    const handleOrderPaidAmountUpdate = async (id: string, newPaidAmount: number) => {
+      try {
+        const orderToUpdate = orders.find(o => o.id === id);
+        if (!orderToUpdate) return;
+        const totalAmt = Number(orderToUpdate.amount || orderToUpdate.total || 0);
+        const paidAmt = Number(newPaidAmount);
+        const pendingAmt = Math.max(0, totalAmt - paidAmt);
+        const newPaymentStatus = paidAmt >= totalAmt ? 'Paid' : paidAmt > 0 ? 'Partial' : 'Pending';
+
+        if (isFirebaseConfigured && db) {
+          await updateDoc(doc(db, 'orders', id), { 
+            paidAmount: paidAmt,
+            pendingAmount: pendingAmt,
+            paymentStatus: newPaymentStatus
+          });
+          showToast(`Paid amount updated to ₹${paidAmt}`);
+          loadDataForTab();
+          return;
+        }
+
+        const res = await fetch(`/api/admin/orders/${id}/payment-status`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ 
+            paymentStatus: newPaymentStatus,
+            paidAmount: paidAmt,
+            pendingAmount: pendingAmt
+          })
+        });
+        if (res.ok) {
+          showToast(`Paid amount updated to ₹${paidAmt}`);
+          loadDataForTab();
+        } else {
+          alert('Failed to update paid amount.');
+        }
+      } catch (err) {
+        alert('Error updating payment amount: ' + err);
+      }
+    };
+
+    const handleOrderFullSave = async (id: string, updatedFields: any) => {
+      try {
+        if (isFirebaseConfigured && db) {
+          await updateDoc(doc(db, 'orders', id), updatedFields);
+          showToast(`Order details updated successfully.`);
+          loadDataForTab();
+          return;
+        }
+
+        const res = await fetch(`/api/admin/orders/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(updatedFields)
+        });
+        if (res.ok) {
+          showToast(`Order details updated successfully.`);
+          loadDataForTab();
+        } else {
+          alert('Failed to update order details.');
+        }
+      } catch (err) {
+        alert('Error saving order: ' + err);
       }
     };
 
@@ -1947,12 +2047,13 @@
                           <div className="min-w-[1000px] w-full">
                             {/* Table Headers */}
                             <div className="grid grid-cols-12 bg-slate-50/80 px-6 py-4 border-b border-slate-200/80 text-[10px] font-mono font-black text-slate-500 uppercase tracking-widest text-left">
-                              <div className="col-span-2">Order ID & Date</div>
-                              <div className="col-span-2">Customer & City</div>
-                              <div className="col-span-2">Contact</div>
+                              <div className="col-span-2">Order No.</div>
+                              <div className="col-span-2">Deliver To</div>
+                              <div className="col-span-2">Contact Info</div>
                               <div className="col-span-3">Items Summary</div>
-                              <div className="col-span-1.5">Payment Status</div>
-                              <div className="col-span-1.5 text-right pr-6">Status</div>
+                              <div className="col-span-1.5">Price Details</div>
+                              <div className="col-span-1">Status</div>
+                              <div className="col-span-0.5 text-right pr-2">Actions</div>
                             </div>
 
                             {/* Table Rows */}
@@ -2030,16 +2131,26 @@
                                 return pageItems.map((o) => {
                                   // Formatting helper functions
                                   const formattedId = (() => {
-                                    if (!o.id) return 'ORD-UNKNOWN';
-                                    if (o.id.startsWith('order_')) {
-                                      const d = new Date(o.createdAt || Date.now());
-                                      const day = String(d.getDate()).padStart(2, '0');
-                                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                                      const year = String(d.getFullYear()).slice(-2);
-                                      const suffix = o.id.slice(-3);
-                                      return `ORD-${day}_${month}_${year}-${suffix}`;
+                                    if (!o.id) return 'ORD-00_00_00-000';
+                                    const d = new Date(o.createdAt || Date.now());
+                                    const day = String(d.getDate()).padStart(2, '0');
+                                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                                    const year = String(d.getFullYear()).slice(-2);
+                                    
+                                    const cleanId = o.id.replace('order_', '').replace('GMA-', '');
+                                    const digitsOnly = cleanId.replace(/\D/g, '');
+                                    let suffix = '';
+                                    if (digitsOnly.length >= 3) {
+                                      suffix = digitsOnly.slice(-3);
+                                    } else {
+                                      const alphaNum = cleanId.replace(/[^a-zA-Z0-9]/g, '');
+                                      if (alphaNum.length >= 3) {
+                                        suffix = alphaNum.slice(-3);
+                                      } else {
+                                        suffix = cleanId.slice(-3).padStart(3, '0');
+                                      }
                                     }
-                                    return o.id;
+                                    return `ORD-${day}_${month}_${year}-${suffix.toUpperCase()}`;
                                   })();
 
                                   const formattedDate = (() => {
@@ -2083,8 +2194,22 @@
 
                                   const statusUpper = (o.status || 'Pending').toUpperCase();
 
+                                  const totalAmt = Number(o.amount || o.total || 0);
+                                  const paidAmt = Number(o.paidAmount || 0);
+                                  const pendingAmt = o.pendingAmount !== undefined ? Number(o.pendingAmount) : Math.max(0, totalAmt - paidAmt);
+
                                   return (
-                                    <div key={o.id} className="grid grid-cols-12 px-6 py-4.5 items-center hover:bg-slate-50/50 transition-colors text-left text-xs text-slate-700 relative">
+                                    <div 
+                                      key={o.id} 
+                                      onClick={(e) => {
+                                        const target = e.target as HTMLElement;
+                                        if (target.closest('button') || target.closest('a') || target.closest('select') || target.closest('.action-menu-dropdown')) {
+                                          return;
+                                        }
+                                        setSelectedOrderForDrawer(o);
+                                      }}
+                                      className="grid grid-cols-12 px-6 py-4.5 items-center hover:bg-slate-50/50 transition-colors text-left text-xs text-slate-700 relative cursor-pointer"
+                                    >
                                       {/* Order ID & Date */}
                                       <div className="col-span-2 space-y-0.5">
                                         <span className="font-sans font-extrabold text-[#A61B1B] block truncate" title={o.id}>
@@ -2108,13 +2233,13 @@
                                       {/* Contact Coordinates */}
                                       <div className="col-span-2 min-w-0">
                                         {(o.customerPhone || o.phone) ? (
-                                          <div className="flex items-center space-x-1">
-                                            <span className="font-sans font-medium text-slate-700 truncate" title={o.customerPhone || o.phone}>
+                                          <div className="flex items-center space-x-1.5">
+                                            <span className="font-mono font-medium text-slate-700 truncate" title={o.customerPhone || o.phone}>
                                               {o.customerPhone || o.phone}
                                             </span>
-                                            <div className="flex items-center space-x-0.5 shrink-0">
+                                            <div className="flex items-center space-x-1 shrink-0">
                                               <a
-                                                href={`https://wa.me/${(o.customerPhone || o.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${(o.customerName || o.name)}, this is Geeta's Masale. We have received your order inquiry ID ${o.id}.`)}`}
+                                                href={`https://wa.me/${(o.customerPhone || o.phone).replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${(o.customerName || o.name)}, this is Geeta's Masale. We have received your order inquiry ID ${formattedId}.`)}`}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="p-1 rounded-full text-emerald-600 hover:bg-emerald-50 transition-colors"
@@ -2159,7 +2284,7 @@
                                               </p>
                                               {o.items.length > 1 && (
                                                 <p className="text-[10px] font-mono font-medium text-slate-400 mt-0.5">
-                                                  + {o.items.length - 1} more masala items
+                                                  + {o.items.length - 1} more items
                                                 </p>
                                               )}
                                             </div>
@@ -2169,146 +2294,103 @@
                                         )}
                                       </div>
 
-                                      {/* Payment Status & Amount */}
-                                      <div className="col-span-1.5 min-w-0">
-                                        <div className="flex flex-col">
-                                          <span className="font-mono font-black text-slate-800 text-xs">
-                                            ₹{Number(o.amount || o.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                          </span>
-                                          <span className={`text-[9px] font-mono font-black uppercase tracking-wider mt-0.5 ${
-                                            (o.paymentStatus === 'Paid') ? 'text-emerald-600' : 'text-amber-500'
-                                          }`}>
-                                            {o.paymentStatus || 'Pending'}
-                                          </span>
+                                      {/* Price Details */}
+                                      <div className="col-span-1.5 min-w-0 pr-2">
+                                        <div className="flex flex-col space-y-0.5 text-[11px] font-mono">
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-slate-400">Tot:</span>
+                                            <span className="font-bold text-slate-800">₹{totalAmt}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-emerald-500">Paid:</span>
+                                            <span className="font-bold text-emerald-600">₹{paidAmt}</span>
+                                          </div>
+                                          <div className="flex items-center justify-between">
+                                            <span className="text-amber-500">Pend:</span>
+                                            <span className={`font-bold ${pendingAmt > 0 ? 'text-amber-600' : 'text-slate-400'}`}>₹{pendingAmt}</span>
+                                          </div>
                                         </div>
                                       </div>
 
-                                      {/* Status Badge & Actions */}
-                                      <div className="col-span-1.5 flex items-center justify-end space-x-2 pr-2">
-                                        <div>
-                                          {(() => {
-                                            const s = statusUpper;
-                                            if (s === 'SHIPPED' || s === 'DISPATCHED') {
-                                              return (
-                                                <span className="px-2.5 py-1 text-[9px] font-mono font-black uppercase rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                                                  SHIPPED
-                                                </span>
-                                              );
-                                            }
-                                            if (s === 'PROCESSING') {
-                                              return (
-                                                <span className="px-2.5 py-1 text-[9px] font-mono font-black uppercase rounded-full bg-purple-50 text-purple-600 border border-purple-100">
-                                                  PROCESSING
-                                                </span>
-                                              );
-                                            }
-                                            if (s === 'CONFIRMED') {
-                                              return (
-                                                <span className="px-2.5 py-1 text-[9px] font-mono font-black uppercase rounded-full bg-orange-50 text-orange-600 border border-orange-100">
-                                                  CONFIRMED
-                                                </span>
-                                              );
-                                            }
-                                            if (s === 'DELIVERED') {
-                                              return (
-                                                <span className="px-2.5 py-1 text-[9px] font-mono font-black uppercase rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">
-                                                  DELIVERED
-                                                </span>
-                                              );
-                                            }
-                                            if (s === 'CANCELLED') {
-                                              return (
-                                                <span className="px-2.5 py-1 text-[9px] font-mono font-black uppercase rounded-full bg-rose-50 text-rose-600 border border-rose-100">
-                                                  CANCELLED
-                                                </span>
-                                              );
-                                            }
-                                            return (
-                                              <span className="px-2.5 py-1 text-[9px] font-mono font-black uppercase rounded-full bg-amber-50 text-amber-600 border border-amber-100">
-                                                PENDING
-                                              </span>
-                                            );
-                                          })()}
-                                        </div>
+                                      {/* Colored Badges dropdown select */}
+                                      <div className="col-span-1">
+                                        <select
+                                          value={o.status || 'Pending'}
+                                          onChange={(e) => handleOrderStatusUpdate(o.id, e.target.value)}
+                                          className={`px-2 py-0.5 text-[9px] font-mono font-black uppercase rounded-full border cursor-pointer focus:outline-none focus:ring-1 focus:ring-slate-400 transition-colors ${
+                                            statusUpper === 'SHIPPED' || statusUpper === 'DISPATCHED'
+                                              ? 'bg-blue-50 text-blue-600 border-blue-100'
+                                              : statusUpper === 'PROCESSING'
+                                              ? 'bg-purple-50 text-purple-600 border-purple-100'
+                                              : statusUpper === 'CONFIRMED'
+                                              ? 'bg-orange-50 text-orange-600 border-orange-100'
+                                              : statusUpper === 'DELIVERED'
+                                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                              : statusUpper === 'CANCELLED'
+                                              ? 'bg-rose-50 text-rose-600 border-rose-100'
+                                              : 'bg-amber-50 text-amber-600 border-amber-100'
+                                          }`}
+                                        >
+                                          <option value="Pending">Pending</option>
+                                          <option value="Confirmed">Confirmed</option>
+                                          <option value="Processing">Processing</option>
+                                          <option value="Shipped">Shipped</option>
+                                          <option value="Delivered">Delivered</option>
+                                          <option value="Cancelled">Cancelled</option>
+                                        </select>
+                                      </div>
 
-                                        {/* Action Dropdown Menu Trigger */}
-                                        <div className="relative shrink-0">
-                                          <button
-                                            onClick={() => setOpenMenuOrderId(openMenuOrderId === o.id ? null : o.id)}
-                                            className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 active:scale-95 transition-all cursor-pointer"
-                                            title="Open order actions"
-                                          >
-                                            <MoreVertical className="w-4 h-4 shrink-0" />
-                                          </button>
+                                      {/* Action Menu */}
+                                      <div className="col-span-0.5 text-right relative action-menu-dropdown pr-2">
+                                        <button
+                                          onClick={() => setOpenMenuOrderId(openMenuOrderId === o.id ? null : o.id)}
+                                          className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 active:scale-95 transition-all cursor-pointer"
+                                          title="Open order actions"
+                                        >
+                                          <MoreVertical className="w-4 h-4 shrink-0" />
+                                        </button>
 
-                                          {/* Floating Action Menu dropdown */}
-                                          {openMenuOrderId === o.id && (
-                                            <>
-                                              <div 
-                                                className="fixed inset-0 z-10" 
-                                                onClick={() => setOpenMenuOrderId(null)}
-                                              />
-                                              <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-slate-200/80 z-20 py-1.5 overflow-hidden font-sans">
-                                                <div className="px-3 py-1.5 border-b border-slate-100 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                                                  Console Management
-                                                </div>
-                                                
-                                                {/* Shipping status transitions */}
-                                                <div className="p-1 space-y-0.5">
-                                                  <span className="block px-2 py-1 text-[8px] font-mono font-black text-slate-400 uppercase tracking-widest">
-                                                    Shipment Status
-                                                  </span>
-                                                  {['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'].map((st) => (
-                                                    <button
-                                                      key={st}
-                                                      onClick={() => {
-                                                        handleOrderStatusUpdate(o.id, st);
-                                                        setOpenMenuOrderId(null);
-                                                      }}
-                                                      className={`w-full text-left px-2 py-1 text-[11px] rounded hover:bg-slate-50 flex items-center justify-between ${
-                                                        (o.status || 'Pending').toLowerCase() === st.toLowerCase() ? 'text-[#A61B1B] font-bold bg-rose-50/50' : 'text-slate-600'
-                                                      }`}
-                                                    >
-                                                      <span>{st}</span>
-                                                      {(o.status || 'Pending').toLowerCase() === st.toLowerCase() && <Check className="w-3 h-3 text-[#A61B1B]" />}
-                                                    </button>
-                                                  ))}
-                                                </div>
-
-                                                <div className="border-t border-slate-100 my-1"></div>
-
-                                                {/* Payment status transitions */}
-                                                <div className="p-1 space-y-0.5">
-                                                  <span className="block px-2 py-1 text-[8px] font-mono font-black text-slate-400 uppercase tracking-widest">
-                                                    Payment Status
-                                                  </span>
-                                                  {['Pending', 'Paid', 'Failed'].map((pay) => (
-                                                    <button
-                                                      key={pay}
-                                                      onClick={() => {
-                                                        handleOrderPaymentStatusUpdate(o.id, pay);
-                                                        setOpenMenuOrderId(null);
-                                                      }}
-                                                      className={`w-full text-left px-2 py-1 text-[11px] rounded hover:bg-slate-50 flex items-center justify-between ${
-                                                        (o.paymentStatus || 'Pending').toLowerCase() === pay.toLowerCase() ? 'text-[#E86A17] font-bold bg-orange-50/30' : 'text-slate-600'
-                                                      }`}
-                                                    >
-                                                      <span>{pay}</span>
-                                                      {(o.paymentStatus || 'Pending').toLowerCase() === pay.toLowerCase() && <Check className="w-3 h-3 text-[#E86A17]" />}
-                                                    </button>
-                                                  ))}
-                                                </div>
-
-                                                <div className="border-t border-slate-100 my-1"></div>
-
-                                                {/* Other logistics */}
+                                        {openMenuOrderId === o.id && (
+                                          <>
+                                            <div 
+                                              className="fixed inset-0 z-10" 
+                                              onClick={() => setOpenMenuOrderId(null)}
+                                            />
+                                            <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-slate-200/80 z-20 py-1.5 overflow-hidden font-sans text-left">
+                                              <div className="px-3 py-1.5 border-b border-slate-100 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                                                Console Management
+                                              </div>
+                                              
+                                              <div className="p-1 space-y-0.5">
                                                 <button
                                                   onClick={() => {
                                                     setOpenMenuOrderId(null);
-                                                    const val = prompt('Enter Courier tracking registration ID (e.g., Delhivery / DTDC):', o.trackingNumber || '');
+                                                    setSelectedOrderForDrawer(o);
+                                                  }}
+                                                  className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
+                                                >
+                                                  <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                                  <span>View Details</span>
+                                                </button>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenMenuOrderId(null);
+                                                    setEditingOrder(o);
+                                                  }}
+                                                  className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
+                                                >
+                                                  <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                                                  <span>Edit Details</span>
+                                                </button>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenMenuOrderId(null);
+                                                    const val = prompt('Enter Courier tracking registration ID:', o.trackingNumber || '');
                                                     if (val !== null) handleOrderAddTracking(o.id, val);
                                                   }}
-                                                  className="w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
+                                                  className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
                                                 >
                                                   <Truck className="w-3.5 h-3.5 text-slate-400" />
                                                   <span>{o.trackingNumber ? 'Modify Tracking ID' : 'Add Tracking ID'}</span>
@@ -2317,17 +2399,42 @@
                                                 <button
                                                   onClick={() => {
                                                     setOpenMenuOrderId(null);
+                                                    const val = prompt('Update Total Paid Amount (₹):', o.paidAmount || 0);
+                                                    if (val !== null) handleOrderPaidAmountUpdate(o.id, Number(val));
+                                                  }}
+                                                  className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
+                                                >
+                                                  <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                                                  <span>Payment Info</span>
+                                                </button>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenMenuOrderId(null);
                                                     setSelectedOrderDetails(o);
                                                   }}
-                                                  className="w-full text-left px-3 py-2 text-xs text-[#A61B1B] hover:bg-rose-50/50 flex items-center space-x-2 font-bold"
+                                                  className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 flex items-center space-x-2 font-medium"
                                                 >
-                                                  <FileText className="w-3.5 h-3.5 text-[#A61B1B]" />
+                                                  <FileText className="w-3.5 h-3.5 text-slate-400" />
                                                   <span>View Full Invoice</span>
                                                 </button>
+
+                                                <div className="border-t border-slate-100 my-1"></div>
+
+                                                <button
+                                                  onClick={() => {
+                                                    setOpenMenuOrderId(null);
+                                                    handleOrderDelete(o.id);
+                                                  }}
+                                                  className="w-full text-left px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center space-x-2 font-bold"
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                                  <span>Delete Order</span>
+                                                </button>
                                               </div>
-                                            </>
-                                          )}
-                                        </div>
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                     </div>
                                   );
@@ -3618,6 +3725,461 @@
                   className="p-2 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-sans font-bold transition-all cursor-pointer"
                 >
                   Close View
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Right-Side Order Details Drawer */}
+        {selectedOrderForDrawer && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-fadeIn">
+            <div 
+              className="absolute inset-0 cursor-pointer" 
+              onClick={() => setSelectedOrderForDrawer(null)}
+            />
+            
+            <div className="relative w-full max-w-lg h-full bg-white shadow-2xl flex flex-col animate-slideInRight border-l border-slate-200">
+              {/* Drawer Header */}
+              <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-mono font-black uppercase text-slate-400">Order ID & details</span>
+                  </div>
+                  <h3 className="text-lg font-sans font-black text-[#A61B1B] mt-0.5">
+                    {(() => {
+                      const o = selectedOrderForDrawer;
+                      if (!o.id) return 'ORD-UNKNOWN';
+                      const d = new Date(o.createdAt || Date.now());
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = String(d.getFullYear()).slice(-2);
+                      const cleanId = o.id.replace('order_', '').replace('GMA-', '');
+                      const digitsOnly = cleanId.replace(/\D/g, '');
+                      let suffix = '';
+                      if (digitsOnly.length >= 3) {
+                        suffix = digitsOnly.slice(-3);
+                      } else {
+                        const alphaNum = cleanId.replace(/[^a-zA-Z0-9]/g, '');
+                        if (alphaNum.length >= 3) {
+                          suffix = alphaNum.slice(-3);
+                        } else {
+                          suffix = cleanId.slice(-3).padStart(3, '0');
+                        }
+                      }
+                      return `ORD-${day}_${month}_${year}-${suffix.toUpperCase()}`;
+                    })()}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedOrderForDrawer(null)}
+                  className="p-1.5 rounded-lg hover:bg-slate-200/60 text-slate-400 hover:text-slate-600 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Drawer Body - Scrollable content */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 text-left">
+                {/* Order Status Badges info */}
+                <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200/60 rounded-2xl">
+                  <div>
+                    <span className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Shipment Status</span>
+                    <span className={`inline-block px-2.5 py-0.5 text-[10px] font-mono font-black uppercase rounded-full mt-1.5 ${
+                      (selectedOrderForDrawer.status || 'Pending').toUpperCase() === 'DELIVERED'
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                        : (selectedOrderForDrawer.status || 'Pending').toUpperCase() === 'CANCELLED'
+                        ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                        : 'bg-amber-50 text-amber-600 border border-amber-100'
+                    }`}>
+                      {selectedOrderForDrawer.status || 'Pending'}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Payment Status</span>
+                    <span className={`inline-block px-2.5 py-0.5 text-[10px] font-mono font-black uppercase rounded-full mt-1.5 ${
+                      (selectedOrderForDrawer.paymentStatus || 'Pending').toUpperCase() === 'PAID'
+                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                        : 'bg-amber-50 text-amber-600 border border-amber-100'
+                    }`}>
+                      {selectedOrderForDrawer.paymentStatus || 'Pending'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Customer Details */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">Customer details</h4>
+                  <div className="bg-slate-50/40 p-4 border border-slate-150 rounded-2xl space-y-2.5">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-medium block">Recipient Name</span>
+                      <span className="text-sm font-sans font-extrabold text-slate-800">{selectedOrderForDrawer.customerName || selectedOrderForDrawer.name || 'Anonymous'}</span>
+                    </div>
+                    {selectedOrderForDrawer.customerPhone || selectedOrderForDrawer.phone ? (
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-medium block">Contact Number</span>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <span className="text-sm font-mono font-bold text-slate-700">{selectedOrderForDrawer.customerPhone || selectedOrderForDrawer.phone}</span>
+                          <div className="flex items-center space-x-1">
+                            <a
+                              href={`https://wa.me/${(selectedOrderForDrawer.customerPhone || selectedOrderForDrawer.phone).replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1 rounded-full text-emerald-600 hover:bg-emerald-50"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </a>
+                            <a
+                              href={`tel:${selectedOrderForDrawer.customerPhone || selectedOrderForDrawer.phone}`}
+                              className="p-1 rounded-full text-blue-600 hover:bg-blue-50"
+                            >
+                              <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                    {selectedOrderForDrawer.customerEmail || selectedOrderForDrawer.email ? (
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-medium block">Email Address</span>
+                        <span className="text-sm font-mono text-slate-600">{selectedOrderForDrawer.customerEmail || selectedOrderForDrawer.email}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Shipping Address */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">Shipping Address</h4>
+                  <div className="bg-slate-50/40 p-4 border border-slate-150 rounded-2xl space-y-2">
+                    <p className="text-sm font-sans font-bold text-slate-700 leading-relaxed">
+                      {selectedOrderForDrawer.customerAddress || selectedOrderForDrawer.address || 'No address specified'}
+                    </p>
+                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-xs font-medium">
+                      <div>
+                        <span className="text-[9px] text-slate-400 block font-mono">City</span>
+                        <span className="text-slate-800 font-bold">{selectedOrderForDrawer.customerCity || selectedOrderForDrawer.city || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block font-mono">State</span>
+                        <span className="text-slate-800 font-bold">{selectedOrderForDrawer.customerState || selectedOrderForDrawer.state || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[9px] text-slate-400 block font-mono">Pincode</span>
+                        <span className="text-slate-800 font-mono font-black">{selectedOrderForDrawer.customerPincode || selectedOrderForDrawer.pincode || 'N/A'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Product Summary */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">Product Summary</h4>
+                  <div className="border border-slate-150 rounded-2xl overflow-hidden bg-slate-50/20">
+                    <div className="grid grid-cols-12 px-4 py-2 text-[9px] font-mono font-black uppercase text-slate-400 bg-slate-100/50 border-b border-slate-150">
+                      <div className="col-span-7">Masala Item</div>
+                      <div className="col-span-2 text-center">Qty</div>
+                      <div className="col-span-3 text-right">Price</div>
+                    </div>
+                    <div className="divide-y divide-slate-150">
+                      {selectedOrderForDrawer.items?.map((item: any, idx: number) => (
+                        <div key={idx} className="grid grid-cols-12 px-4 py-3 items-center text-slate-700 text-xs">
+                          <div className="col-span-7 font-bold text-slate-800">
+                            {item.productName} {item.weight ? `(${item.weight})` : ''}
+                          </div>
+                          <div className="col-span-2 text-center font-mono font-black text-slate-600">
+                            {item.quantity}
+                          </div>
+                          <div className="col-span-3 text-right font-mono font-extrabold text-slate-800">
+                            ₹{item.price * item.quantity}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Breakdown */}
+                <div className="space-y-2.5">
+                  <h4 className="text-[10px] font-mono font-black text-slate-400 uppercase tracking-widest">Payment Breakdown</h4>
+                  <div className="bg-slate-50 p-4 border border-slate-150 rounded-2xl text-xs space-y-2 font-mono font-medium">
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Products Subtotal</span>
+                      <span>₹{Number(selectedOrderForDrawer.amount || selectedOrderForDrawer.total || 0) - (selectedOrderForDrawer.deliveryCharge || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500 pb-2 border-b border-slate-200">
+                      <span>Delivery Shipping Charge</span>
+                      <span>₹{selectedOrderForDrawer.deliveryCharge || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-800 font-extrabold text-sm font-sans pt-1">
+                      <span>Grand Total Value</span>
+                      <span className="text-[#A61B1B]">₹{selectedOrderForDrawer.amount || selectedOrderForDrawer.total || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-emerald-600 font-extrabold">
+                      <span>Total Amount Paid</span>
+                      <span>₹{selectedOrderForDrawer.paidAmount || 0}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-amber-600 font-extrabold pb-1">
+                      <span>Pending Balance Due</span>
+                      <span>₹{selectedOrderForDrawer.pendingAmount !== undefined ? selectedOrderForDrawer.pendingAmount : Math.max(0, Number(selectedOrderForDrawer.amount || selectedOrderForDrawer.total || 0) - (selectedOrderForDrawer.paidAmount || 0))}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Footer Actions */}
+              <div className="p-6 border-t border-slate-150 bg-slate-50/50 flex flex-col gap-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Process Order button (advances the status) */}
+                  <button
+                    onClick={() => {
+                      const currentStatus = selectedOrderForDrawer.status || 'Pending';
+                      let nextStatus = 'Pending';
+                      if (currentStatus === 'Pending') nextStatus = 'Confirmed';
+                      else if (currentStatus === 'Confirmed') nextStatus = 'Processing';
+                      else if (currentStatus === 'Processing') nextStatus = 'Shipped';
+                      else if (currentStatus === 'Shipped') nextStatus = 'Delivered';
+                      else nextStatus = 'Delivered';
+
+                      handleOrderStatusUpdate(selectedOrderForDrawer.id, nextStatus);
+                      setSelectedOrderForDrawer(prev => ({ ...prev, status: nextStatus }));
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-sans font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer active:scale-98"
+                  >
+                    <CheckCircle className="w-4 h-4 shrink-0" />
+                    <span>Process Order ({(() => {
+                      const cs = selectedOrderForDrawer.status || 'Pending';
+                      if (cs === 'Pending') return 'Confirm';
+                      if (cs === 'Confirmed') return 'Assemble';
+                      if (cs === 'Processing') return 'Ship Out';
+                      if (cs === 'Shipped') return 'Deliver';
+                      return 'Completed';
+                    })()})</span>
+                  </button>
+
+                  {/* Print Invoice button */}
+                  <button
+                    onClick={() => {
+                      setSelectedOrderDetails(selectedOrderForDrawer);
+                    }}
+                    className="py-3 px-4 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-sans font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer active:scale-98"
+                  >
+                    <Printer className="w-4 h-4 shrink-0" />
+                    <span>Print Invoice</span>
+                  </button>
+                </div>
+                
+                <button
+                  onClick={() => setSelectedOrderForDrawer(null)}
+                  className="w-full py-2.5 rounded-xl border border-slate-150 hover:bg-slate-50 text-slate-500 text-xs font-sans font-medium transition-all text-center cursor-pointer"
+                >
+                  Close Drawer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Order Modal */}
+        {editingOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs animate-fadeIn p-4">
+            <div 
+              className="absolute inset-0 cursor-pointer" 
+              onClick={() => setEditingOrder(null)}
+            />
+            
+            <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl flex flex-col animate-scaleUp overflow-hidden border border-slate-200">
+              {/* Modal Header */}
+              <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+                <h3 className="text-base font-sans font-black text-slate-800 flex items-center space-x-2">
+                  <Edit2 className="w-4 h-4 text-[#A61B1B]" />
+                  <span>Edit Order Details</span>
+                </h3>
+                <button
+                  onClick={() => setEditingOrder(null)}
+                  className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Modal Body - Form fields */}
+              <div className="px-6 py-5 max-h-[70vh] overflow-y-auto space-y-4 text-left font-sans text-xs">
+                {/* Recipient Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Customer Full Name</label>
+                    <input 
+                      type="text"
+                      value={editingOrder.customerName || editingOrder.name || ''}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, customerName: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Contact Number</label>
+                    <input 
+                      type="text"
+                      value={editingOrder.customerPhone || editingOrder.phone || ''}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, customerPhone: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-mono font-medium focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Email Address */}
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Email Address</label>
+                  <input 
+                    type="email"
+                    value={editingOrder.customerEmail || editingOrder.email || ''}
+                    onChange={(e) => setEditingOrder({ ...editingOrder, customerEmail: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none"
+                  />
+                </div>
+
+                {/* Shipping Address */}
+                <div>
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Shipping Full Address</label>
+                  <textarea 
+                    rows={2}
+                    value={editingOrder.customerAddress || editingOrder.address || ''}
+                    onChange={(e) => setEditingOrder({ ...editingOrder, customerAddress: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none resize-none"
+                  />
+                </div>
+
+                {/* City, State, Pin */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">City</label>
+                    <input 
+                      type="text"
+                      value={editingOrder.customerCity || editingOrder.city || ''}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, customerCity: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">State</label>
+                    <input 
+                      type="text"
+                      value={editingOrder.customerState || editingOrder.state || ''}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, customerState: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Pincode</label>
+                    <input 
+                      type="text"
+                      value={editingOrder.customerPincode || editingOrder.pincode || ''}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, customerPincode: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-mono font-bold focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 my-4" />
+
+                {/* Logistics & Financials */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Courier Tracking ID</label>
+                    <input 
+                      type="text"
+                      value={editingOrder.trackingNumber || ''}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, trackingNumber: e.target.value })}
+                      placeholder="Delhivery / DTDC / SpeedPost ID"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-mono focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Total Paid Amount (₹)</label>
+                    <input 
+                      type="number"
+                      value={editingOrder.paidAmount || 0}
+                      onChange={(e) => {
+                        const paid = Number(e.target.value);
+                        const total = Number(editingOrder.amount || editingOrder.total || 0);
+                        const pending = Math.max(0, total - paid);
+                        const status = paid >= total ? 'Paid' : paid > 0 ? 'Partial' : 'Pending';
+                        setEditingOrder({ 
+                          ...editingOrder, 
+                          paidAmount: paid,
+                          pendingAmount: pending,
+                          paymentStatus: status
+                        });
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-mono font-bold focus:ring-1 focus:ring-slate-400 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Shipment Status & Payment Status */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Order shipment Status</label>
+                    <select
+                      value={editingOrder.status || 'Pending'}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, status: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none bg-white"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Confirmed">Confirmed</option>
+                      <option value="Processing">Processing</option>
+                      <option value="Shipped">Shipped</option>
+                      <option value="Delivered">Delivered</option>
+                      <option value="Cancelled">Cancelled</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-1">Payment Status Badge</label>
+                    <select
+                      value={editingOrder.paymentStatus || 'Pending'}
+                      onChange={(e) => setEditingOrder({ ...editingOrder, paymentStatus: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-slate-800 font-medium focus:ring-1 focus:ring-slate-400 outline-none bg-white"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Partial">Partial</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end space-x-3 bg-slate-50/50">
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-500 hover:bg-slate-50 font-bold transition-all text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const fields = {
+                      customerName: editingOrder.customerName || editingOrder.name || 'Anonymous',
+                      customerPhone: editingOrder.customerPhone || editingOrder.phone || '',
+                      customerEmail: editingOrder.customerEmail || editingOrder.email || '',
+                      customerAddress: editingOrder.customerAddress || editingOrder.address || '',
+                      customerCity: editingOrder.customerCity || editingOrder.city || '',
+                      customerState: editingOrder.customerState || editingOrder.state || '',
+                      customerPincode: editingOrder.customerPincode || editingOrder.pincode || '',
+                      trackingNumber: editingOrder.trackingNumber || '',
+                      paidAmount: Number(editingOrder.paidAmount || 0),
+                      pendingAmount: Number(editingOrder.pendingAmount !== undefined ? editingOrder.pendingAmount : Math.max(0, Number(editingOrder.amount || editingOrder.total || 0) - Number(editingOrder.paidAmount || 0))),
+                      paymentStatus: editingOrder.paymentStatus || 'Pending',
+                      status: editingOrder.status || 'Pending'
+                    };
+                    await handleOrderFullSave(editingOrder.id, fields);
+                    setEditingOrder(null);
+                  }}
+                  className="px-5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold transition-all text-xs cursor-pointer"
+                >
+                  Save Changes
                 </button>
               </div>
             </div>
