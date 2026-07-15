@@ -1067,7 +1067,7 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
   // MAIN DASHBOARD LAYOUT (STEP 4)
   // -------------------------------------------------------------
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+    <div className="fixed inset-0 z-50 overflow-hidden bg-[#FAF9F6] flex items-center justify-center p-0">
       
       {/* Toast Alert */}
       {successToast && (
@@ -1077,7 +1077,7 @@ export default function AdminDashboard({ onClose }: AdminDashboardProps) {
         </div>
       )}
 
-      <div className="w-full h-full max-w-7xl bg-[#FAF9F6] rounded-3xl overflow-hidden shadow-[0_24px_70px_rgba(0,0,0,0.22)] border border-slate-100 flex flex-col lg:flex-row">
+      <div className="w-full h-full bg-[#FAF9F6] overflow-hidden flex flex-col lg:flex-row">
         
         {/* SIDEBAR NAVIGATION */}
         <aside className="w-full lg:w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-b lg:border-b-0 lg:border-r border-slate-800">
