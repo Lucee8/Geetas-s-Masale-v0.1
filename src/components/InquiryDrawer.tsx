@@ -188,12 +188,14 @@ export default function InquiryDrawer({
   const maxDiscAmount = appliedCoupon?.maxDiscount ? Number(appliedCoupon.maxDiscount) : 99999;
   const discountAmount = Math.min(Math.round(totalPricing * discountPct), maxDiscAmount);
 
-  // Loyalty Reward deduction: 10 points = ₹1.00
-  const pointsAvailable = profile?.rewardPoints || 0;
-  const maxPointsDiscount = Math.floor(pointsAvailable / 10);
-  const pointsDiscount = redeemPoints ? Math.min(maxPointsDiscount, totalPricing + deliveryFee - discountAmount) : 0;
+  // Loyalty Reward deduction: 10 points = ₹1.00 (Deactivated)
+  const pointsAvailable = 0;
+  const maxPointsDiscount = 0;
+  const pointsDiscount = 0;
 
-  const finalTotalBill = Math.max(0, totalPricing + deliveryFee - discountAmount - pointsDiscount);
+  const finalTotalBill = confirmedOrder 
+    ? confirmedOrder.total 
+    : Math.max(0, totalPricing + deliveryFee - discountAmount - pointsDiscount);
 
   // Safely calculate pay amount based on selected mode
   const payAmount = amountMode === 'full'
@@ -317,7 +319,8 @@ export default function InquiryDrawer({
 
   // WhatsApp transmission for prepaid/initiated UPI payment
   const handleTransmitWhatsAppPay = () => {
-    if (inquiryList.length === 0) return;
+    const list = confirmedOrder ? confirmedOrder.items : [];
+    if (list.length === 0 && inquiryList.length === 0) return;
 
     let text = `Hello *Geeta's Masale*! I have completed order payment of *Rs. ${payAmount}* on the app:\n\n`;
 
@@ -328,15 +331,30 @@ export default function InquiryDrawer({
     text += `• *Mobile/WhatsApp:* ${mobile}\n\n`;
 
     text += `*🛍 ORDER ITEMS*:\n`;
-    inquiryList.forEach((item, index) => {
-      text += `${index + 1}. *${item.product.name}* (${item.product.weight})\n`;
-      text += `   Qty: ${item.quantity} x Rs. ${item.product.mrp} = Rs. ${item.product.mrp * item.quantity}\n`;
-    });
+    if (confirmedOrder) {
+      confirmedOrder.items.forEach((item: any, index: number) => {
+        text += `${index + 1}. *${item.productName}* (${item.weight || 'N/A'})\n`;
+        text += `   Qty: ${item.quantity} x Rs. ${item.price} = Rs. ${item.price * item.quantity}\n`;
+      });
+    } else {
+      inquiryList.forEach((item, index) => {
+        text += `${index + 1}. *${item.product.name}* (${item.product.weight})\n`;
+        text += `   Qty: ${item.quantity} x Rs. ${item.product.mrp} = Rs. ${item.product.mrp * item.quantity}\n`;
+      });
+    }
+
+    const savedTotalPricing = confirmedOrder 
+      ? confirmedOrder.items.reduce((acc: number, item: any) => acc + item.price * item.quantity, 0) 
+      : totalPricing;
+    const savedDeliveryFee = savedTotalPricing > 499 ? 0 : 40;
+    const savedDiscountAmount = confirmedOrder 
+      ? Math.max(0, savedTotalPricing + savedDeliveryFee - confirmedOrder.total) 
+      : discountAmount;
 
     text += `\n*💰 BILL SUMMARY*:\n`;
-    text += `• Total MRP: Rs. ${totalPricing}\n`;
-    text += `• Courier Shipping: Rs. ${deliveryFee === 0 ? 'FREE' : deliveryFee}\n`;
-    text += `• Heritage Discount (10%): -Rs. ${discountAmount}\n`;
+    text += `• Total MRP: Rs. ${savedTotalPricing}\n`;
+    text += `• Courier Shipping: Rs. ${savedDeliveryFee === 0 ? 'FREE' : savedDeliveryFee}\n`;
+    text += `• Heritage Discount (10%): -Rs. ${savedDiscountAmount}\n`;
     text += `• *Net Final Bill*: *Rs. ${finalTotalBill}*\n`;
     text += `• *Direct UPI Paid/Initiated*: *Rs. ${payAmount}*\n`;
     
@@ -804,24 +822,6 @@ export default function InquiryDrawer({
                       )}
                     </div>
 
-                    {/* Loyalty Points Redemption block */}
-                    {profile && profile.rewardPoints > 0 && (
-                      <div className="bg-white rounded-xl p-3.5 border border-slate-200 flex items-center justify-between text-left">
-                        <div className="space-y-0.5">
-                          <span className="text-[9px] font-mono text-slate-400 uppercase font-black tracking-wider block">Redeem Loyalty Rewards</span>
-                          <p className="text-xs font-bold text-slate-800">
-                            Use {profile.rewardPoints} points (Save ₹{Math.floor(profile.rewardPoints / 10)})
-                          </p>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={redeemPoints}
-                          onChange={(e) => setRedeemPoints(e.target.checked)}
-                          className="w-5 h-5 accent-[#A61B1B] cursor-pointer"
-                        />
-                      </div>
-                    )}
-
                     {/* Exact Flipkart styled billing detail container */}
                     <div className="bg-white rounded-xl p-4.5 border border-slate-200 shadow-xs space-y-3">
                       <h4 className="text-xs font-mono font-black text-[#A61B1B] uppercase tracking-wider border-b border-gray-100 pb-2">Price Details</h4>
@@ -844,13 +844,6 @@ export default function InquiryDrawer({
                         <span>Heritage Discount (10% Off)</span>
                         <span className="font-bold text-emerald-600 font-mono">-₹{discountAmount}</span>
                       </div>
-
-                      {pointsDiscount > 0 && (
-                        <div className="flex justify-between items-center text-xs text-slate-600">
-                          <span>Loyalty points Redeemed</span>
-                          <span className="font-bold text-emerald-600 font-mono">-₹{pointsDiscount}</span>
-                        </div>
-                      )}
 
                       <div className="flex justify-between items-center text-sm text-slate-900 border-t border-slate-100 pt-2.5 font-sans font-black uppercase">
                         <span>Total Payable Amount</span>

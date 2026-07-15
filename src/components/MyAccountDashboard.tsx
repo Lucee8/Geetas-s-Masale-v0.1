@@ -33,7 +33,7 @@ import {
   CreditCard
 } from 'lucide-react';
 import { useUser, SavedAddress, Order, Review } from '../context/UserContext';
-import { PRODUCTS, resolveProductImage } from '../data/storeData.ts';
+import { PRODUCTS, resolveProductImage } from '../data/storeData';
 import { Product } from '../types';
 
 interface MyAccountDashboardProps {
@@ -257,28 +257,11 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                   Namaste, {profile?.name || 'Customer'}
                 </h1>
                 <p className="text-xs text-white/80 mt-1 font-medium">
-                  Manage your orders, synchronized cart, wishlist, and rewards
+                  Manage your orders, synchronized cart, and wishlist
                 </p>
               </div>
             </div>
 
-            {/* Loyalty Card widget */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-4 flex items-center space-x-3.5 shadow-lg max-w-xs w-full">
-              <div className="p-2.5 rounded-xl bg-amber-400 text-slate-950 shadow-inner shrink-0">
-                <Gift className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-[10px] font-mono tracking-widest text-amber-200 uppercase font-black block">
-                  GEETA'S LOYALTY POINTS
-                </span>
-                <span className="text-2xl font-black text-white tracking-wider">
-                  {profile?.rewardPoints || 0}
-                </span>
-                <span className="text-[9px] text-white/70 block font-medium mt-0.5">
-                  10 Points = ₹1.00 automatic discount at checkout
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -450,7 +433,7 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
                   </div>
                 </div>
 
-                {/* Profile Overview & Loyalty explanation card */}
+                {/* Profile Overview & Welcome card */}
                 <div className="bg-white border border-slate-200/60 rounded-2xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.012)]">
                   <h3 className="font-sans text-sm font-bold tracking-widest uppercase text-slate-900 border-b border-slate-100 pb-3 mb-4">
                     Account Overview
@@ -474,11 +457,11 @@ export default function MyAccountDashboard({ onClose, onOpenCart, onAddToCart }:
 
                     <div className="p-4 rounded-2xl bg-[#A61B1B]/5 border border-[#A61B1B]/10 flex flex-col justify-between">
                       <span className="text-xs font-bold text-[#A61B1B] flex items-center gap-1.5">
-                        <Gift className="w-4 h-4" />
-                        <span>Loyalty Points Benefits</span>
+                        <ShoppingBag className="w-4 h-4" />
+                        <span>Welcome to Geeta Masale</span>
                       </span>
                       <p className="text-[11px] text-slate-600 mt-2 leading-relaxed">
-                        Earn reward points on every single purchase! You get <strong className="text-slate-900">10% points cashback</strong> on your order values which can be easily used to claim instant discounts on your future orders.
+                        Experience the authentic taste of premium hand-pounded spices, direct from our traditional mills to your kitchen.
                       </p>
                       <button 
                         onClick={() => setActiveTab('profile')}

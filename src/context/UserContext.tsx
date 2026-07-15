@@ -213,7 +213,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           email: firebaseUser.email || '',
           phone: firebaseUser.phoneNumber || '',
           photoURL: firebaseUser.photoURL || '',
-          rewardPoints: 50, // Welcome gift points!
+          rewardPoints: 0, // Welcome gift points deactivated
           cart: [],
           wishlist: [],
           addresses: [],
@@ -281,7 +281,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       name: 'Demo Customer (Konkan Explorer)',
       email: 'explorer@geetasmasale.com',
       phone: '+91 9999999999',
-      rewardPoints: 120,
+      rewardPoints: 0,
       cart: [],
       wishlist: [],
       addresses: [
@@ -329,7 +329,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         email: 'demo-google@example.com',
         phone: '',
         photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=60',
-        rewardPoints: 120,
+        rewardPoints: 0,
         cart: [],
         wishlist: [],
         addresses: [
@@ -401,7 +401,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         name: email.split('@')[0],
         email: email,
         phone: '+91 9999999999',
-        rewardPoints: 120,
+        rewardPoints: 0,
         cart: [],
         wishlist: [],
         addresses: [
@@ -459,7 +459,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         name: name,
         email: email,
         phone: phone || '',
-        rewardPoints: 50, // Welcome loyalty points
+        rewardPoints: 0, // Welcome points deactivated
         cart: [],
         wishlist: [],
         addresses: [],
@@ -496,7 +496,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       name,
       email,
       phone: phone || '',
-      rewardPoints: 50, // Welcome loyalty points
+      rewardPoints: 0, // Welcome points deactivated
       cart: [],
       wishlist: [],
       addresses: [],
@@ -666,21 +666,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (isFirebaseConfigured && db) {
       await setDoc(doc(db, 'orders', orderId), newOrder);
       
-      // Update coupons used & Loyalty points in User profile
+      // Update coupons used & Loyalty points in User profile (Deactivated loyalty points update)
       if (user && profile) {
         const couponsUsed = profile?.couponsUsed || [];
         if (orderData.couponCode && !couponsUsed.includes(orderData.couponCode)) {
           couponsUsed.push(orderData.couponCode);
         }
         
-        const loyaltyEarned = Math.round(orderData.total * 0.1); // 10% cash back in loyalty points!
-        const currentPoints = profile?.rewardPoints || 0;
-        const pointsDeducted = orderData.pointsRedeemed || 0;
-        const finalPoints = Math.max(0, currentPoints - pointsDeducted + loyaltyEarned);
-
         await updateUserProfile({
           couponsUsed,
-          rewardPoints: finalPoints,
           cart: [] // clear server cart
         });
 
@@ -699,14 +693,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Demo Mode
       setOrders(prev => [newOrder, ...prev]);
       if (profile) {
-        const loyaltyEarned = Math.round(orderData.total * 0.1);
-        const currentPoints = profile.rewardPoints || 0;
-        const pointsDeducted = orderData.pointsRedeemed || 0;
-        const finalPoints = Math.max(0, currentPoints - pointsDeducted + loyaltyEarned);
-        
         setProfile(prev => prev ? {
           ...prev,
-          rewardPoints: finalPoints,
           cart: []
         } : null);
       } else {
@@ -843,7 +831,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         name: 'Demo Customer (Konkan Explorer)',
         email: 'explorer@geetasmasale.com',
         phone: mockPhone,
-        rewardPoints: 120,
+        rewardPoints: 0,
         cart: [],
         wishlist: [],
         addresses: [

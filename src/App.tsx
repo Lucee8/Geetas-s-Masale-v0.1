@@ -396,10 +396,10 @@ export default function App() {
                 </div>
                 <div>
                   <h4 className="text-sm font-sans font-bold text-slate-900 leading-snug">
-                    Namaste! Unlock Rewards
+                    Namaste! Sign In
                   </h4>
                   <p className="text-slate-500 text-[11px] mt-0.5 leading-relaxed">
-                    Sign in with your Google account to get <span className="font-semibold text-amber-600">50 welcome points</span> & track orders!
+                    Sign in with your Google account to track orders and save shipping addresses!
                   </p>
                 </div>
               </div>
